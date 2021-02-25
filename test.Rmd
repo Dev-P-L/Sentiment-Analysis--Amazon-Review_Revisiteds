@@ -1,0 +1,839 @@
+---
+title: "Prediction in Sentiment Analysis: Amazon Reviews Polarity"
+subtitle: "Philippe Lambot -- February 14, 2021"
+
+output: 
+  html_document:               # Output is an HTML document.
+    toc: true                  # Dynamic table of contents
+    toc_depth: 3               # All (= 3) title levels in table of contents
+    number_sections: true      # Automated title numeration
+    css: styles.css            # Calling CSS file.
+    toc_float:                 # Floats TOC to left of the main doc.
+      collapsed: false         # Floating TOC with all (= 3) levels.
+      smooth_scroll: true      # Controls scrolls related to TOC navigation.
+    code_folding: hide         # Includes R code but has it hidden by default.
+    highlight: espresso        # Specifies code highlighting style.
+    df_print: paged            # HTML tables with support for pagination
+    smart: false               # Avoiding typographical correction.
+    
+# styles.css is a CSS file that regulates many layout aspects. 
+# It is lodged in the same GitHub repository as SA_Amazon_Code.Rmd,
+# i.e. in https://github.com/Dev-P-L/Sentiment-Analysis .
+
+# If you wish to run the file SA_Amazon_Code.Rmd on your computer, 
+# I suggest placing the files SA_Amazon_Code.Rmd and styles.css 
+# in the same folder.
+---
+
+```{r Setting up layout, in addition to the rules already contained in the CSS file described and called above}
+
+# Let's avoid messages and warnings in SA_Amazon_Insights&Results.html. Anyway, messages and warnings produced by the code have already been dealt with.  
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# The next opts_chunk centers figures.
+knitr::opts_chunk$set(out.width = "100%", fig.align = "center")
+
+# The next instruction facilitates table layout in HTML.
+options(knitr.table.format = "html")
+
+# I use the string <br> to generate empty lines.
+```
+
+<br>
+<center> \* </center>
+<center> \* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \* </center>
+<br>
+<br>
+
+# Executive Summary
+
+**88 % prediction accuracy** has been reached on the validation set, against 50 % with a baseline model. Data is an Amazon sample provided in UCI Machine Learning Repository.
+
+In this sentiment analysis project, which factors have contributed towards that improvement with 38 percentage points?
+
+**Natural Language Processing** has contributed 21.7 percentage points: corpus, lowercasing, punctuation handling, stopword removal, stemming, tokenization from sentences into words, bag of words. 
+
+**Text mining** has brought additional accuracy improvement with 12.7 percentage points. The following insights have been determinant. 
+
+In decision trees predominate some tokens conveying subjective information; but other tokens containing subjective information have not been used in false negatives and false positives. Such ignored subjective information has been retrieved from random samples of false negatives and false positives, exclusively on the training set; customized lists have been established with tokens sorted as having either positive or negative sentiment orientation; occurrences of these tokens in reviews have been replaced with either a positive or a negative generic token. Polarization and text substitution have brought 10.3 percentage points out of the 12.7.
+
+Another insight has been about negation impact: negation has been fruitfully integrated, contributing 2.4 percentage points towards the 12.7 improvement from text mining. 
+
+**Machine learning optimization** has been performed across 10 models. Testing has been conducted on accuracy distributions across bootstrapped resamples. eXtreme Gradient Boosting has emerged as the most performing model in this project and has boosted accuracy with 3.6 additional percentage points. 
+
+<br>
+
+TAGS: sentiment analysis, natural language processing, text mining, subjective information, tokenization, bag of words, word frequency, interactive wordclouds, graphs, and tables, decision trees, false negatives, false positives, text classification, polarization, lists of positive n-grams, lists of negative n-grams, text substitution, machine learning, binary classification, eXtreme Gradient Boosting, Monotone Multi-Layer Perceptron Neural Network, Random Forest, Stochastic Gradient Boosting, Support Vector Machines with Radial Basis Function Kernel, AdaBoost Classification Trees, bootstrapping, accuracy distributions across resamples, R
+
+<br>
+
+GITHUB: https://github.com/Dev-P-L/Sentiment-Analysis
+
+<br>
+
+# Foreword
+
+Dear Readers, you are most welcome to run the project on your own computer if you so wish.
+
+This project is lodged with the GitHub repository https://github.com/Dev-P-L/Sentiment-Analysis.
+
+It is comprised of twelve files. All code is included in SA_Amazon_Code.Rmd. It does not show in the result report, called SA_Amazon_Insights&Results.html. 
+
+For your convenience, the dataset has already been downloaded onto the GitHub repository wherefrom it will be automatically retrieved by the code from SA_Amazon_Code.Rmd. If you so wish, you can also easily retrieve the dataset from https://archive.ics.uci.edu/ml/datasets/Sentiment+Labelled+Sentences and adapt the SA_Amazon_Code.Rmd code accordingly.
+
+You can knit SA_Amazon_Code.Rmd (please in HTML) and produce SA_Amazon_Insights&Results.html on your own computer. Before knitting SA_Amazon_Code.Rmd (please in HTML) on your computer, don't forget to copy the file styles.css from the GitHub repository into the same folder as SA_Amazon_Code.Rmd. 
+
+On my laptop, running SA_Amazon_Code.Rmd takes approximately four hours. For information about my work environment, see the session info at the end of this document. 
+
+Some packages are required in SA_Amazon_Code.Rmd. The code from SA_Amazon_Code.Rmd contains instructions to download these packages if they are not available yet. 
+
+```{r Setting up work environment}
+
+# I. CLEANING USER INTERFACE FOR RAM MANAGEMENT.
+
+# a. Clearing plots
+invisible(if(!is.null(dev.list())) dev.off())
+
+# b. Cleaning workspace
+rm(list=ls())
+
+# c. Cleaning console
+cat("\014")
+
+########################################################################
+
+# II. PACKAGES.
+
+# a. Installing packages if necessary.
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(tm)) install.packages("tm", repos = "http://cran.us.r-project.org")
+if(!require(SnowballC)) install.packages("SnowballC", repos = "http://cran.us.r-project.org")
+if(!require(e1071)) install.packages("e1071", repos = "http://cran.us.r-project.org")
+if(!require(wordcloud2)) install.packages("wordcloud2", repos = "http://cran.us.r-project.org")
+if(!require(RColorBrewer)) install.packages("RColorBrewer", repos = "http://cran.us.r-project.org")
+if(!require(caTools)) install.packages("caTools", repos = "http://cran.us.r-project.org")
+if(!require(rpart)) install.packages("rpart", repos = "http://cran.us.r-project.org")
+if(!require(rpart.plot)) install.packages("rpart.plot", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(kernlab)) install.packages("kernlab", repos = "http://cran.us.r-project.org")
+if(!require(fastAdaboost)) install.packages("fastAdaboost", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
+if(!require(gbm)) install.packages("gbm", repos = "http://cran.us.r-project.org")
+if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
+if(!require(monmlp)) install.packages("monmlp", repos = "http://cran.us.r-project.org")
+if(!require(kableExtra)) install.packages("kableExtra", repos = "http://cran.us.r-project.org")
+if(!require(gridExtra)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+if(!require(utf8)) install.packages("utf8", repos = "http://cran.us.r-project.org")
+if(!require(devtools)) install.packages("devtools", repos = "http://cran.us.r-project.org")
+if(!require(plotly)) install.packages("plotly", repos = "http://cran.us.r-project.org")
+if(!require(htmltools)) install.packages("htmltools", repos = "http://cran.us.r-project.org")
+if(!require(DT)) install.packages("DT", repos = "http://cran.us.r-project.org")
+if(!require(utils)) install.packages("utils", repos = "http://cran.us.r-project.org")
+
+# b. Requiring libraries.
+
+library(tidyverse)
+library(tm)
+library(SnowballC)
+library(e1071)
+library(wordcloud2)
+library(RColorBrewer)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(kernlab)
+library(fastAdaboost)
+library(randomForest)
+library(gbm)
+library(xgboost)
+library(monmlp)
+library(kableExtra)
+library(gridExtra)
+library(utf8)
+library(devtools)
+library(plotly)
+library(htmltools)
+library(DT)
+library(utils)
+
+# c. Preventing silently failing after the first wordcloud2.
+
+# See https://github.com/Lchiffon/wordcloud2/issues/65 .
+devtools::install_github("gaospecial/wordcloud2")
+
+########################################################################
+
+# III. COLOR PALETTE
+
+dark_cerulean <- "#08457E"
+dodger_blue <- "#0181ff"
+greenish_blue <- "#507786"
+light_gray <- "#808080"
+harvard_crimson <- "#A41034"
+light_taupe <- "#b38b6d"
+super_light_taupe <- "#d6c0b0"
+paris_green <- "50C878"
+
+# For other hues, existing denominations will be used such as "powderblue", "mistyrose", etc. 
+```
+
+Now, let's turn to data. 
+
+<br>
+
+# Data
+
+As explained on the UCI Machine Learning Repository website, data is organized in a CSV file in two columns. In the first column, there are 1,000 Amazon product reviews (sentences). In the second column, there is a positive or negative evaluation; the ratio of positive evaluations is 50 %.
+
+That file will be split into training reviews - two thirds of reviews - and validation reviews. Let's have a quick look at the number of positive and negative reviews in the training set.
+
+<br>
+
+```{r Dowloading data and building up training set and calculating some simple statistics}
+
+# Downloading data.
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis/master/amazon_cells_labelled.txt"
+reviews <- read.delim(myfile, header = FALSE, sep = "\t", quote = "", 
+                      stringsAsFactors = FALSE)
+rm(myfile)
+
+reviews <- reviews %>% 
+  `colnames<-`(c("text", "sentiment")) %>%
+      # Replacing numerical variable "sentiment" (0/1 values)
+      # with factor variable "sentiment" (Neg/Pos values).
+  mutate(sentiment = as.factor(gsub("1", " Pos", 
+         gsub("0", "Neg", sentiment)))) %>% as.data.frame()
+      # The leading white space character in " Pos" 
+      # cares for " Pos" coming first in the confusion matrix
+      # so that a "true positive" (review that is predicted positive
+      # and is actually positive) corresponds to positive review polarity.
+
+# Creating training index and validation index.
+
+set.seed(1)
+ind_train <- createDataPartition(y = reviews$sentiment, 
+                                 times = 1, p = 2/3, list = FALSE)
+ind_val <- as.integer(setdiff(1:nrow(reviews), ind_train))
+
+# ind_train allows to select the reviews that will be used for training, 
+# be it in NLP, in text mining or in ML.
+
+# Building up the training set with the training index. 
+
+reviews_training <- reviews[ind_train, ] %>% 
+  as.data.frame() %>% 
+  `rownames<-`(1:nrow(.)) %>% 
+  mutate(ro = rownames(.)) %>%
+  select(ro, everything())
+
+# Some simple statistics in a table: numbers of positives reviews and of negative ones. 
+
+tab <- table(reviews_training$sentiment) %>%
+  as.data.frame() %>%
+  `colnames<-`(c("Review Polarity", 
+                 "Number of Reviews in Training Set"))
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, width = "2.5in", bold = T) %>%
+  column_spec(2, width = "3in", bold = T) %>%
+  row_spec(1, color = "white", background = greenish_blue) %>%
+  row_spec(2, color = "white", background = harvard_crimson)
+
+rm(tab)
+```
+
+<br>
+
+Let's have a look at training reviews.
+
+<br>
+
+```{r Interactive table with the training reviews}
+
+# Building up data frame.
+
+tab <- reviews_training %>% 
+  `colnames<-`(c("Row Number", "Review", "Sentiment"))
+
+# Building up interactive presentation table.
+
+datatable(tab, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 10, scrollX = T,
+                         
+          # Setting background color and font color in header.               
+                         
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#507786", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Setting background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "powderblue";','}',
+              '}')
+            )
+          )
+
+rm(tab)
+```
+
+<br>
+
+In order to better catch the relationship between the reviews and the reviews sentiment polarity, let's proceed to some Natural Language Processing. The idea is to detect words and expressions that impact sentiment polarity.
+
+<br>
+
+# NLP
+
+We have seen before that 50 % of reviews have positive sentiment polarity; of course, also 50 % of reviews have negative sentiment polarity.
+
+Consequently, we cannot apply the base model in prediction. Indeed, considering that all reviews have e.g. positive polarity would deliver 50 % true positives and 50 % false positives. 
+
+We do need additional information to predict. We are going to retrieve that information from words. So, let's identify words. 
+
+To do so, we are going
+
+- to create a corpus of the words from training reviews;
+- to process these words in NLP through lowercasing, punctuation removal, stopwords removal, stemming;
+- to produce a bag of words or document term data frame;
+- to check up NLP output;
+- and to measure NLP impact on review polarity prediction.
+
+<br>
+
+## Bag of Words
+
+Training reviews will be transposed into a corpus. Then the corpus will be processed in NLP: words will be lowercased, punctuation marks will be removed as well as stopwords and finally words will be stemmed. 
+
+Tokenization will then take place, a bag of words being created. The bag of words takes the form of a Document Term Matrix: the 668 rows correspond to the 668 training reviews; there is a column for each token. At the junction of each row and each column, there is a frequency number representing the occurrence of the corresponding token in the corresponding review. 
+
+Applying a sparsity threshold of .995 will only leave tokens that appear in at least 0.5 % of reviews.
+
+As a pre-attentive insight, a wordcloud will show the most frequent tokens. The wordcloud is interactive: just hover over a token and you get the frequency of occurrence. 
+
+```{r Creating corpus and bag of words}
+
+# Corpus is created on training reviews only to avoid any interference between training reviews and validation reviews. Otherwise, tokens from validation set could (slightly) impact token selection when applying the sparsity threshold. 
+
+corpus <- VCorpus(VectorSource(reviews_training$text)) 
+
+# Lowercasing, removing punctuation and stopwords, stemming document.
+
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, stemDocument)
+
+# Building up a bag of words in a Document Term Matrix.
+
+dtm <- DocumentTermMatrix(corpus)
+
+# Managing sparsity with sparsity threshold. 
+
+sparse <- removeSparseTerms(dtm, 0.995)
+
+# Converting sparse, which is a DocumentTermMatrix, to a matrix and then to a data frame.
+
+sentSparse <- as.data.frame(as.matrix(sparse)) 
+
+# Making all column names R-friendly.
+colnames(sentSparse) <- make.names(colnames(sentSparse))
+
+# In order to get some pre-emptive insights into the bag of words, let's use a wordcloud. 
+
+# First, let's build up a data frame with only the 40 most frequent tokens from "sentSparse", i.e. the Document Term Matrix pruned by the sparsity process. 
+
+df <- data.frame(word = colnames(sentSparse), 
+                 freq = colSums(sentSparse)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Second, let's create the wordcloud. Numerous colors are used to easily dissociate tokens.
+
+set.seed(1)
+wordcloud2(df, shape = 'square', color = 'random-dark',
+           backgroundColor = super_light_taupe, shuffle = FALSE)
+```
+
+There are topic-related tokens such as "phone", tokens conveying subjective information such as "great", etc. Before analyzing token categories, let's check up the technical adequacy of results from the NLP process. 
+ 
+<br>
+
+## Checking NLP
+
+The wordcloud above is an ergonomic tool to easily pinpoint some NLP flaws. 
+
+<br>
+
+### Short Forms
+
+Some tokens were not expected, such as "dont" or "ive", since they seem to originate in short forms and were expected to have been eliminated as stopwords. 
+
+Let's start investigating with "dont". The frequency of occurrence is at least 10 since that is a prerequisite to enter the wordcloud. But there can be more instances.  
+
+<br>
+
+```{r Frequency of occurrence of "dont"}
+
+# In the training reviews, which rows contain a digit at least equal to 1 in the column "dont"? 
+
+bin <- which(sentSparse$dont >= 1)
+
+# Building up a small presentation table.
+
+df <- data.frame(length(bin)) %>% 
+  `colnames<-`('Number of Reviews Containing "dont"') %>%
+  `rownames<-`("Bag of Words from Training Reviews")
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = light_gray) %>%
+  column_spec(2, bold = T, color = "white", background = harvard_crimson) 
+
+rm(df)
+
+# Keeping bin for later use.
+```
+
+<br>
+
+Perusing the bag of words for rows containing "dont" has led to distinguishing two scenarios. The first one is an exception, but it can be generalized to other tokens. Here it is.  
+
+<br>
+
+```{r First scenario for "dont" originating in misspelling}
+
+df <- data.frame(reviews_training$ro[bin[17]], 
+                 reviews_training$text[bin[17]]) %>%
+  `colnames<-`(c("Training Review Number",
+               '"dont" Originating in Misspelling')) 
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1, bold = T, color = "white", background = harvard_crimson) 
+
+rm(df)
+```
+
+<br>
+
+"dont" contains a spelling error or is, in a more inclusive wording, "alternative" grammar: it has been used instead of "don't". Actually, there is only one such case in the bag of words. But it could happen more often and also with other short forms such as "couldn't", "isn't", ... becoming "couldnt", "isnt", ... 
+
+We are going to treat these misspelled short forms as if they were standardly written. We will complement stopwords with variants such as "dont", "couldnt". Consequently, when we remove stopwords, the misspelled short forms can be eradicated as well as the standardly written short forms, at least for the mispelled short forms we can think of... Complementing stopwords with misspelled short forms will be done in the next section "Fine Tuning NLP".
+
+Now, let's have a look at the most common scenario that has generates "dont". Let's just show the one review with two occurrences.  
+
+<br>
+
+```{r Second scenario for "dont" originating in the short form standardly written with apostrophe}
+
+# Localizing the cases, i.e. all cases except the one in the first scenario above, which originated in a misspelling. 
+bin_2 <- bin[-17]
+
+# Building up data frame. 
+tab <- reviews_training[bin_2, ]
+
+tab <- tab %>%
+  `colnames<-`(c("Training Review Number",
+                 "\"dont\" Originating in \"don't\"",
+                 "Sentiment")) 
+
+# Building up interactive presentation table.
+
+datatable(tab, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 10, scrollX = T,
+                         
+          # Setting background color and font color in header.               
+                         
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Setting background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+<br>
+
+This is the general scenario: "don't" has been standardly written and it was expected to have disappeared as all stopwords and nevertheless it is still in the bag of words since we have seen it in the bag of words wordcloud.
+
+What happened? Before stopword removal, all punctuation marks have been removed and consequently "don't" has become "dont"; it is no longer identical to the stopword "don't" and, very logically, it has not been removed.
+
+This scenario happened in 19 reviews and, without change, it would happen for all short forms that include an apostrophe.   
+
+In order to prevent that scenario from happening, there are simple solutions, e.g.:
+
+- discarding stopwords, and consequently short forms, before removing punctuation;
+- or, removing punctuation marks with the exception of apostrophes, discarding stopwords, and consequently short forms, and only then removing the remaining apostrophes (apostrophes present at other places than in short forms). 
+
+An appropriate solution will be applied in the next section "Fine Tuning NLP".
+
+Now, it is time we switched to another NLP flaw that is perceptible in the bag of words wordcloud above: words collapse.
+
+<br>
+
+### Words Collapse
+
+Let's have a look at the whole bag of words (obtained before applying the sparsity process).
+
+```{r Showing row 24 of all tokens with token "brokeni"}
+# Collecting all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"!
+tokens <- findFreqTerms(dtm, lowfreq = 1) %>%
+  as.data.frame() %>%
+  `colnames<-`("Tokens")
+
+# Instead of "findFreqTerms(dtm, lowfreq = 1)" 
+# we could also have used "colnames(dtm)" ...
+
+# Building up interactive presentation table.
+
+datatable(tokens, rownames = FALSE, filter = "top", 
+          
+          options = list(width = "450px",
+            
+            pageLength = 10, scrollX = F,
+            
+            # Centers the single datatable column (column 0).
+            columnDefs = list(list(className = 'dt-center', targets = 0)),
+            
+            # Sets background color and font color in header.        
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Sets background color in rows. 
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+First, there are several numbers. Numbers will be removed. 
+
+Second, some unigrams seem to originate from two words: 
+
+- "abovepretti",
+- "brokeni",
+- "buyit",
+- "replaceeasi",
+- "unacceptableunless",
+- etc.
+
+Let's check whether e.g. "brokeni" originates in words collapse. 
+
+<br>
+
+```{r Review generating "brokeni"}
+
+# We have to work on all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"! The corpus meets this requirement: it contains all tokens. Let's extract the row number(s) generating "brokeni".
+
+v <- 1:length(corpus)
+for(i in v) {
+  v[i] <- length(grep("brokeni", corpus[[i]]$content))
+}
+
+# Second, retrieving the corresponding review. 
+df <- data.frame(
+  reviews_training$ro[which(v >= 1)],
+  reviews_training$text[which(v >= 1)], 
+  stringsAsFactors = FALSE) %>%
+  `colnames<-`(c("Review Row Number", 
+                 'Review Producing "brokeni"'))
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, width = "2in") %>%
+  row_spec(1, bold = T, color = "white", background = harvard_crimson) 
+
+rm(v, i, df)
+```
+
+<br>
+
+What happened? Well, "broken...I" was first lowercased to "broken...i", then punctuation was removed by the function removePunctuation(), which does not insert any white space character, and "broken...i" has become "brokeni". 
+
+This has to be corrected of course for "brokeni" but also for similar cases. In the next section "Fine Tuning NLP", a general solution will be applied.
+
+<br>
+
+### Fine Tuning NLP
+
+Instead of using the function removePunctuation() from the package tm, specific "for loops" will be developed, preprocessing reviews according to the needs stated above and in a stepwise way: 
+
+- punctuation marks other than apostrophes will be replaced with white space characters instead of just being removed;
+- short forms will be removed;
+- remaining apostrophes will be replaced with white space characters;
+- other stopwords will be removed (it is done in step 4 and not in step 2 in order to do it when absolutely all punctuation marks have been removed: please see example with "brokeni" where two words and one punctuation mark are stuck together...).
+
+Among stopwords, short forms (contractions) need to be specifically treated. Additional needs of breakdown might also emerge. Starting from the stopword list delivered by the function stopwords("english") from the package tm, four CSV files will be produced.
+
+These are the four files:
+
+- short_forms_pos.csv, with all positive short forms from stopwords("english") such as "she's", a few additional ones and numerous misspelled variants such as "she s" or "shes";
+- short_forms_neg.csv, in the same approach, for short forms such as "isn't", "daren't" but also "isn t", "isnt", etc.;
+- negation.csv, with seven negational unigrams such as "not" or "no";
+- stopwords_remaining.csv, which is self-explanatory.
+
+The 4 files have been uploaded to the GitHub repository https://github.com/Dev-P-L/Sentiment-Analysis. They are going to be downloaded now and integrated into NLP pre-processing.
+
+Let's rebuild the corpus, the bag of words and the interactive wordcloud (just hover over tokens to get the frequency of occurrence). 
+
+```{r Complementing NLP}
+# Downloading the 4 files described above and preparing them in order to rebuild the corpus, the bag of words (the Document Term  Matrix) and the wordcloud. 
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis/master/short_forms_pos.csv"
+short_forms_pos <- read.csv(myfile, header = FALSE, 
+                            stringsAsFactors = FALSE)
+short_forms_pos <- short_forms_pos[, 2] %>% 
+  as.vector()
+# Normalizing (among others, apostrophes). 
+short_forms_pos <- sapply(short_forms_pos, utf8_normalize, 
+                          map_quote = TRUE)
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis/master/short_forms_neg.csv"
+short_forms_neg <- read.csv(myfile, header = FALSE, 
+                            stringsAsFactors = FALSE)
+short_forms_neg <- short_forms_neg[, 2] %>% 
+  as.vector()
+# Normalizing (among others, apostrophes). 
+short_forms_neg <- sapply(short_forms_neg, utf8_normalize, 
+                          map_quote = TRUE)
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis/master/negation.csv"
+negation <- read.csv(myfile, header = FALSE, 
+                     stringsAsFactors = FALSE) 
+negation <- negation[, 2] %>% 
+  as.vector()
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis/master/stopwords_remaining.csv"
+stopwords_remaining <- read.csv(myfile, header = FALSE, 
+                                stringsAsFactors = FALSE) 
+stopwords_remaining <- stopwords_remaining[, 2] %>% 
+  as.vector()
+
+rm(myfile)
+
+# Creating and preprocessing corpus again.
+corpus_av0 <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av0 <- tm_map(corpus_av0, content_transformer(tolower))
+
+# Replacing all punctuation marks other than apostrophes with white space 
+# characters, instead of simply suppressing punctuation marks, not to risk 
+# collapsing two or more words into one. 
+
+# Keeping apostrophes to leave intact short forms such as "don't" 
+# and be able to identify them as short forms 
+# and as such to discard them. 
+for (i in 1:nrow(reviews_training)) {
+  corpus_av0[[i]]$content <- gsub("(?!')[[:punct:]]", " ", 
+                              corpus_av0[[i]]$content, perl = TRUE)
+}
+rm(i)
+
+# Removing extra white space characters 
+# (= removing all white space characters except one in a sequence).
+# Then removing short forms.
+corpus_av0 <- tm_map(corpus_av0, stripWhitespace)
+corpus_av0 <- tm_map(corpus_av0, removeWords, short_forms_neg)
+corpus_av0 <- tm_map(corpus_av0, removeWords, short_forms_pos)
+
+# Replacing all remaining apostrophes with white space characters 
+# (there might be other apostrophes than in short forms...). 
+for (i in 1:nrow(reviews_training)) {
+  corpus_av0[[i]]$content <- gsub("[[:punct:]]", " ",                                                          corpus_av0[[i]]$content)
+}
+rm(i)
+
+# Removing n-grams from other files. 
+corpus_av0 <- tm_map(corpus_av0, removeWords, negation)
+corpus_av0 <- tm_map(corpus_av0, removeWords, stopwords_remaining)
+
+# Stemming words.
+corpus_av0 <- tm_map(corpus_av0, stemDocument)
+
+# Removing numbers and extra white space characters.
+corpus_av0 <- tm_map(corpus_av0, removeNumbers)
+corpus_av0 <- tm_map(corpus_av0, stripWhitespace)
+
+# Building up a bag of words in a Document Term Matrix.
+dtm_av0 <- DocumentTermMatrix(corpus_av0)
+
+# Managing sparsity with the sparsity threshold. 
+sparse_av0 <- removeSparseTerms(dtm_av0, 0.995)
+
+# Converting sparse_av0, which is a DocumentTermMatrix, 
+# to a matrix and then to a data frame.
+sentSparse_av0 <- as.data.frame(as.matrix(sparse_av0)) 
+
+# Making all column names R-friendly.
+colnames(sentSparse_av0) <- make.names(colnames(sentSparse_av0))
+
+# Let's check whether shortcomings have disappeared or not
+# by building up a wordcloud with the most frequent tokens 
+# originating from the training reviews.
+
+# Keeping only the 50 most frequent tokens. 
+df <- data.frame(word = colnames(sentSparse_av0), 
+                 freq = colSums(sentSparse_av0)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Building up wordcloud. 
+set.seed(1)
+wordcloud2(df, shape = 'square', color = 'random-light',
+           backgroundColor = greenish_blue, shuffle = FALSE)
+```
+
+In the wordcloud, there is no more token originating from short forms.
+
+Let's have a broader look, building up a presentation table and checking whether all abovementioned oddities have disappeared. Let's check up in the bag of words whether "dont" has indeed disappeared. 
+
+<br>
+
+```{r Checking whether oddities mentioned above have indeed disappeared}
+# Retrieving all tokens, upstream of the sparsity process. 
+tokens <- findFreqTerms(dtm_av0, lowfreq = 1)
+
+# Choosing the number of columns of the presentation table. 
+nc <- 5
+
+# Calculating the number of missing tokens to have a full matrix. 
+mis <- ((ceiling(length(tokens) / nc)) * nc) - length(tokens)
+
+# Building up a table.
+tokens <- as.character(c(tokens, (rep("-", mis))))
+tokens <- data.frame(matrix(tokens, ncol = nc, byrow = TRUE)) %>%
+  `colnames<-`(NULL) %>% `rownames<-`(NULL)
+
+# Looking for "dont".
+knitr::kable(tokens[51, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = light_gray) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+rm(nc, mis)
+```
+
+<br>
+
+Yes, indeed, "dont" has disappeared. Let's check up in the same way for "ive"!
+
+<br>
+
+```{r Showing that "ive" has disappeared}
+knitr::kable(tokens[96, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = light_gray) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+```
+
+<br>
+
+"ive" has also disappeared. Now "brokeni".
+
+<br>
+
+```{r Showing that "brokeni" has disappeared}
+knitr::kable(tokens[21, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = light_gray) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+```
+
+<br>
+
+"brokeni" has vanished as well, just as many other oddities. 
+
+The next interactive datatable allows to check up for the disappearance of some other oddities. 
+
+<br>
+
+```{r Showing all tokens after fine tuning NLP}
+# Collecting all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"!
+tokens <- findFreqTerms(dtm_av0, lowfreq = 1) %>%
+  as.data.frame() %>%
+  `colnames<-`("Tokens")
+
+# Instead of "findFreqTerms(dtm, lowfreq = 1)" 
+# we could also have used "colnames(dtm)" ...
+
+# Building up interactive presentation table.
+
+datatable(tokens, rownames = FALSE, filter = "top", 
+          
+          options = list(width = "450px",
+            
+            pageLength = 10, scrollX = F,
+            
+            # Centers the single datatable column (column 0).
+            columnDefs = list(list(className = 'dt-center', targets = 0)),
+            
+            # Sets background color and font color in header.        
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Sets background color in rows. 
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+This interactive datatable allows us to search for other previously pinpointed oddities and to realize that they have indeed disappeared.
+
+All short forms seem to have vanished. 
+
+The same holds for "abovepretti", "replaceeasi" or "unacceptableunless", which looked like the result from words collapse. On the contrary, "buyit" has not vanished, probably so because it was written in that way in the review.  
+
+Numbers have disappeared. 
+
+I leave uncorrected some spelling errors, such as "disapoint" or "dissapoint", because this is no repetitive structure and occurrence seems marginal. 
+
+Let's have a first try at predicting sentiment on the basis of sentSparse_av0, which originates from our training reviews.
