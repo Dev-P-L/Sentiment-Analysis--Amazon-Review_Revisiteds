@@ -1,0 +1,3305 @@
+---
+title: "Prediction in Sentiment Analysis: Amazon Reviews Polarity"
+subtitle: "Philippe Lambot -- February 14, 2021"
+
+output: 
+  html_document:               # Output is an HTML document.
+    toc: true                  # Dynamic table of contents
+    toc_depth: 2               # All (= 3) title levels in table of contents
+    number_sections: true      # Automated title numeration
+    css: styles.css            # Calling CSS file.
+    toc_float:                 # Floats TOC to left of the main doc.
+      collapsed: false         # Floating TOC with all (= 3) levels.
+      smooth_scroll: true      # Controls scrolls related to TOC navigation.
+    code_folding: hide         # Includes R code but has it hidden by default.
+    highlight: espresso        # Specifies code highlighting style.
+    df_print: paged            # HTML tables with support for pagination
+    smart: false               # Avoiding typographical correction.
+    
+# styles.css is a CSS file that regulates many layout aspects. 
+# It is lodged in the same GitHub repository as SA_Amazon_Code.Rmd,
+# i.e. in https://github.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited .
+
+# If you wish to run the file SA_Amazon_Code.Rmd on your computer, 
+# I suggest placing the files SA_Amazon_Code.Rmd and styles.css 
+# in the same folder.
+---
+
+```{r Setting up layout, in addition to the rules already contained in the CSS file described and called above}
+
+# Let's avoid messages and warnings in SA_Amazon_Insights&Results.html. Anyway, messages and warnings produced by the code have already been dealt with.  
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# The next opts_chunk centers figures.
+knitr::opts_chunk$set(out.width = "100%", fig.align = "center")
+
+# The next instruction facilitates table layout in HTML.
+options(knitr.table.format = "html")
+
+# I use the string <br> to generate empty lines.
+```
+
+<br>
+<center> \* </center>
+<center> \* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \* </center>
+<br>
+<br>
+
+# Executive Summary
+
+**88 % prediction accuracy** has been reached on the validation set, against 50 % with a baseline model. Data is an Amazon sample provided in UCI Machine Learning Repository.
+
+In this sentiment analysis project, which factors have contributed towards that improvement with 38 percentage points?
+
+**Natural Language Processing** has contributed 21.7 percentage points: corpus, lowercasing, punctuation handling, stopword removal, stemming, tokenization from sentences into words, bag of words. 
+
+**Text mining** has brought additional accuracy improvement with 12.7 percentage points. The following insights have been determinant. 
+
+In decision trees predominate some tokens conveying subjective information; but other tokens containing subjective information have not been used in false negatives and false positives. Such ignored subjective information has been retrieved from random samples of false negatives and false positives, exclusively on the training set; customized lists have been established with tokens sorted as having either positive or negative sentiment orientation; occurrences of these tokens in reviews have been replaced with either a positive or a negative generic token. Polarization and text substitution have brought 10.3 percentage points out of the 12.7.
+
+Another insight has been about negation impact: negation has been fruitfully integrated, contributing 2.4 percentage points towards the 12.7 improvement from text mining. 
+
+**Machine learning optimization** has been performed across 10 models. Testing has been conducted on accuracy distributions across bootstrapped resamples. eXtreme Gradient Boosting has emerged as the most performing model in this project and has boosted accuracy with 3.6 additional percentage points. 
+
+<br>
+
+TAGS: sentiment analysis, natural language processing, text mining, subjective information, tokenization, bag of words, word frequency, interactive wordclouds, graphs, and tables, decision trees, false negatives, false positives, text classification, polarization, lists of positive n-grams, lists of negative n-grams, text substitution, machine learning, binary classification, eXtreme Gradient Boosting, Monotone Multi-Layer Perceptron Neural Network, Random Forest, Stochastic Gradient Boosting, Support Vector Machines with Radial Basis Function Kernel, AdaBoost Classification Trees, bootstrapping, accuracy distributions across resamples, R
+
+<br>
+
+GITHUB: https://github.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited
+
+<br>
+
+# Foreword
+
+Dear Readers, you are most welcome to run the project on your own computer if you so wish.
+
+This project is lodged with the GitHub repository https://github.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited .
+
+It is comprised of twelve files. All code is included in SA_Amazon_Code.Rmd. It does not show in the result report, called SA_Amazon_Insights&Results.html. 
+
+For your convenience, the dataset has already been downloaded onto the GitHub repository wherefrom it will be automatically retrieved by the code from SA_Amazon_Code.Rmd. If you so wish, you can also easily retrieve the dataset from https://archive.ics.uci.edu/ml/datasets/Sentiment+Labelled+Sentences and adapt the SA_Amazon_Code.Rmd code accordingly.
+
+You can knit SA_Amazon_Code.Rmd (please in HTML) and produce SA_Amazon_Insights&Results.html on your own computer. Before knitting SA_Amazon_Code.Rmd (please in HTML) on your computer, don't forget to copy the file styles.css from the GitHub repository into the same folder as SA_Amazon_Code.Rmd. 
+
+On my laptop, running SA_Amazon_Code.Rmd takes approximately four hours. For information about my work environment, see the session info at the end of this document. 
+
+Some packages are required in SA_Amazon_Code.Rmd. The code from SA_Amazon_Code.Rmd contains instructions to download these packages if they are not available yet. 
+
+```{r Setting up work environment}
+
+# I. CLEANING USER INTERFACE FOR RAM MANAGEMENT.
+
+# a. Clearing plots
+invisible(if(!is.null(dev.list())) dev.off())
+
+# b. Cleaning workspace
+rm(list=ls())
+
+# c. Cleaning console
+cat("\014")
+
+########################################################################
+
+# II. PACKAGES.
+
+# a. Installing packages if necessary.
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(tm)) install.packages("tm", repos = "http://cran.us.r-project.org")
+if(!require(SnowballC)) install.packages("SnowballC", repos = "http://cran.us.r-project.org")
+if(!require(e1071)) install.packages("e1071", repos = "http://cran.us.r-project.org")
+if(!require(wordcloud2)) install.packages("wordcloud2", repos = "http://cran.us.r-project.org")
+if(!require(RColorBrewer)) install.packages("RColorBrewer", repos = "http://cran.us.r-project.org")
+if(!require(caTools)) install.packages("caTools", repos = "http://cran.us.r-project.org")
+if(!require(rpart)) install.packages("rpart", repos = "http://cran.us.r-project.org")
+if(!require(rpart.plot)) install.packages("rpart.plot", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(kernlab)) install.packages("kernlab", repos = "http://cran.us.r-project.org")
+if(!require(fastAdaboost)) install.packages("fastAdaboost", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
+if(!require(gbm)) install.packages("gbm", repos = "http://cran.us.r-project.org")
+if(!require(xgboost)) install.packages("xgboost", repos = "http://cran.us.r-project.org")
+if(!require(monmlp)) install.packages("monmlp", repos = "http://cran.us.r-project.org")
+if(!require(kableExtra)) install.packages("kableExtra", repos = "http://cran.us.r-project.org")
+if(!require(gridExtra)) install.packages("gridExtra", repos = "http://cran.us.r-project.org")
+if(!require(utf8)) install.packages("utf8", repos = "http://cran.us.r-project.org")
+if(!require(devtools)) install.packages("devtools", repos = "http://cran.us.r-project.org")
+if(!require(plotly)) install.packages("plotly", repos = "http://cran.us.r-project.org")
+if(!require(htmltools)) install.packages("htmltools", repos = "http://cran.us.r-project.org")
+if(!require(DT)) install.packages("DT", repos = "http://cran.us.r-project.org")
+if(!require(utils)) install.packages("utils", repos = "http://cran.us.r-project.org")
+
+# b. Requiring libraries.
+
+library(tidyverse)
+library(tm)
+library(SnowballC)
+library(e1071)
+library(wordcloud2)
+library(RColorBrewer)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(kernlab)
+library(fastAdaboost)
+library(randomForest)
+library(gbm)
+library(xgboost)
+library(monmlp)
+library(kableExtra)
+library(gridExtra)
+library(utf8)
+library(devtools)
+library(plotly)
+library(htmltools)
+library(DT)
+library(utils)
+
+# c. Preventing silently failing after the first wordcloud2.
+
+# See https://github.com/Lchiffon/wordcloud2/issues/65 .
+devtools::install_github("gaospecial/wordcloud2")
+
+########################################################################
+
+# III. COLOR PALETTE
+
+dark_cerulean <- "#08457E"
+dodger_blue <- "#0181ff"
+greenish_blue <- "#507786"
+light_gray <- "#808080"
+super_light_gray <- "#a7a7a7"
+harvard_crimson <- "#a41034"
+light_taupe <- "#b38b6d"
+super_light_taupe <- "#d6c0b0"
+paris_green <- "#50C878"
+
+# For other hues, preexisting denominations will be used such as "powderblue", "mistyrose", etc. 
+```
+
+Now, let's turn to data. 
+
+<br>
+
+# Data
+
+As explained on the UCI Machine Learning Repository website, data is organized in a CSV file in two columns. In the first column, there are 1,000 Amazon product reviews (sentences). In the second column, there is a positive or negative evaluation; the ratio of positive evaluations is 50 %.
+
+That file will be split into training reviews - two thirds of reviews - and validation reviews. Let's have a quick look at the number of positive and negative reviews in the training set.
+
+<br>
+
+```{r Dowloading data and building up training set and calculating some simple statistics}
+
+# Downloading data.
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/amazon_cells_labelled.txt"
+reviews <- read.delim(myfile, header = FALSE, sep = "\t", quote = "", 
+                      stringsAsFactors = FALSE)
+rm(myfile)
+
+reviews <- reviews %>% 
+  `colnames<-`(c("text", "sentiment")) %>%
+      # Replacing numerical variable "sentiment" (0/1 values)
+      # with factor variable "sentiment" (Neg/Pos values).
+  mutate(sentiment = as.factor(gsub("1", " Pos", 
+         gsub("0", "Neg", sentiment)))) %>% as.data.frame()
+      # The leading white space character in " Pos" 
+      # cares for " Pos" coming first in the confusion matrix
+      # so that a "true positive" (review that is predicted positive
+      # and is actually positive) corresponds to positive review polarity.
+
+# Creating training index and validation index.
+
+set.seed(1)
+ind_train <- createDataPartition(y = reviews$sentiment, 
+                                 times = 1, p = 2/3, list = FALSE)
+ind_val <- as.integer(setdiff(1:nrow(reviews), ind_train))
+
+# ind_train allows to select the reviews that will be used for training, 
+# be it in NLP, in text mining or in ML.
+
+# Building up the training set with the training index. 
+
+reviews_training <- reviews[ind_train, ] %>% 
+  as.data.frame() %>% 
+  `rownames<-`(1:nrow(.)) %>% 
+  mutate(ro = rownames(.)) %>%
+  select(ro, everything())
+
+# Some simple statistics in a table: numbers of positives reviews and of negative ones. 
+
+tab <- table(reviews_training$sentiment) %>%
+  as.data.frame() %>%
+  `colnames<-`(c("Review Polarity", 
+                 "Number of Reviews in Training Set"))
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, width = "2.5in", bold = T) %>%
+  column_spec(2, width = "3in", bold = T) %>%
+  row_spec(1, color = "white", background = greenish_blue) %>%
+  row_spec(2, color = "white", background = harvard_crimson)
+
+rm(tab)
+```
+
+<br>
+
+Let's have a look at training reviews.
+
+<br>
+
+```{r Interactive table with the training reviews}
+
+# Building up data frame.
+
+tab <- reviews_training %>% 
+  `colnames<-`(c("Row Number", "Training Review", "Sentiment"))
+
+# Building up interactive presentation table.
+
+datatable(tab, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 10, scrollX = T,
+                         
+          # Setting background color and font color in header.               
+                         
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#507786", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Setting background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "powderblue";','}',
+              '}')
+            )
+          )
+
+rm(tab)
+```
+
+<br>
+
+In order to better catch the relationship between the reviews and the reviews sentiment polarity, let's proceed to some Natural Language Processing. The idea is to detect words and expressions that impact sentiment polarity.
+
+<br>
+
+# NLP
+
+We have seen before that 50 % of reviews have positive sentiment polarity; of course, also 50 % of reviews have negative sentiment polarity.
+
+Consequently, we cannot apply the base model in prediction. Indeed, considering that all reviews have e.g. positive polarity would deliver 50 % true positives and 50 % false positives. 
+
+We do need additional information to predict. We are going to retrieve that information from words. So, let's identify words. 
+
+To do so, we are going
+
+- to create a corpus of the words from training reviews;
+- to process these words in NLP through lowercasing, punctuation removal, stopwords removal, stemming;
+- to produce a bag of words or document term data frame;
+- to check up NLP output;
+- and to measure NLP impact on review polarity prediction.
+
+<br>
+
+## Bag of Words
+
+Training reviews will be transposed into a corpus. Then the corpus will be processed in NLP: words will be lowercased, punctuation marks will be removed as well as stopwords and finally words will be stemmed. 
+
+Tokenization will then take place, a bag of words being created. The bag of words takes the form of a Document Term Matrix: the 668 rows correspond to the 668 training reviews; there is a column for each token. At the junction of each row and each column, there is a frequency number representing the occurrence of the corresponding token in the corresponding review. 
+
+Applying a sparsity threshold of .995 will only leave tokens that appear in at least 0.5 % of reviews.
+
+As a pre-attentive insight, a wordcloud will show the most frequent tokens. The wordcloud is interactive: just hover over a token and you get the frequency of occurrence. 
+
+```{r Creating corpus and bag of words}
+
+# Corpus is created on training reviews only to avoid any interference between training reviews and validation reviews. Otherwise, tokens from validation set could (slightly) impact token selection when applying the sparsity threshold. 
+
+corpus <- VCorpus(VectorSource(reviews_training$text)) 
+
+# Lowercasing, removing punctuation and stopwords, stemming document.
+
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, stemDocument)
+
+# Building up a bag of words in a Document Term Matrix.
+
+dtm <- DocumentTermMatrix(corpus)
+
+# Managing sparsity with sparsity threshold. 
+
+sparse <- removeSparseTerms(dtm, 0.995)
+
+# Converting sparse, which is a DocumentTermMatrix, to a matrix and then to a data frame.
+
+sentSparse <- as.data.frame(as.matrix(sparse)) 
+
+# Making all column names R-friendly.
+colnames(sentSparse) <- make.names(colnames(sentSparse))
+
+# In order to get some pre-emptive insights into the bag of words, let's use a wordcloud. 
+
+# First, let's build up a data frame with only the 40 most frequent tokens from "sentSparse", i.e. the Document Term Matrix pruned by the sparsity process. 
+
+df <- data.frame(word = colnames(sentSparse), 
+                 freq = colSums(sentSparse)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Second, let's create the wordcloud. Numerous colors are used to easily dissociate tokens.
+
+set.seed(1)
+wordcloud2(df, shape = 'square', color = 'random-dark',
+           backgroundColor = super_light_taupe, shuffle = FALSE)
+```
+
+There are topic-related tokens such as "phone", tokens conveying subjective information such as "great", etc. Before analyzing token categories, let's check up the technical adequacy of results from the NLP process. 
+ 
+<br>
+
+## Checking
+
+The wordcloud above is an ergonomic tool to easily pinpoint some NLP flaws. 
+
+<br>
+
+### Short Forms
+
+Some tokens were not expected, such as "dont" or "ive", since they seem to originate in short forms and were expected to have been eliminated as stopwords. 
+
+Let's start investigating with "dont". The frequency of occurrence is at least 10 since that is a prerequisite to enter the wordcloud. But there can be more instances.  
+
+<br>
+
+```{r Frequency of occurrence of "dont"}
+
+# In the training reviews, which rows contain a digit at least equal to 1 in the column "dont"? 
+
+bin <- which(sentSparse$dont >= 1)
+
+# Building up a small presentation table.
+
+df <- data.frame(length(bin)) %>% 
+  `colnames<-`('Number of Reviews Containing "dont"') %>%
+  `rownames<-`("Bag of Words from Training Reviews")
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = harvard_crimson) 
+
+rm(df)
+
+# Keeping bin for later use.
+```
+
+<br>
+
+Perusing the bag of words for rows containing "dont" has led to distinguishing two scenarios. The first one is an exception, but it can be generalized to other tokens. Here it is.  
+
+<br>
+
+```{r First scenario for "dont" originating in misspelling}
+
+df <- data.frame(reviews_training$ro[bin[17]], 
+                 reviews_training$text[bin[17]]) %>%
+  `colnames<-`(c("Training Review Number",
+               '"dont" Originating in Misspelling')) 
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1, bold = T, color = "white", background = harvard_crimson) 
+
+rm(df)
+```
+
+<br>
+
+"dont" contains a spelling error or is, in a more inclusive wording, "alternative" grammar: it has been used instead of "don't". Actually, there is only one such case in the bag of words. But it could happen more often and also with other short forms such as "couldn't", "isn't", ... becoming "couldnt", "isnt", ... 
+
+We are going to treat these misspelled short forms as if they were standardly written. We will complement stopwords with variants such as "dont", "couldnt". Consequently, when we remove stopwords, the misspelled short forms can be eradicated as well as the standardly written short forms, at least for the mispelled short forms we can think of... Complementing stopwords with misspelled short forms will be done in the next section "Fine Tuning NLP".
+
+Now, let's have a look at the most common scenario that has generates "dont". Let's just show the one review with two occurrences.  
+
+<br>
+
+```{r Second scenario for "dont" originating in the short form standardly written with apostrophe}
+
+# Localizing the cases, i.e. all cases except the one in the first scenario above, which originated in a misspelling. 
+bin_2 <- bin[-17]
+
+# Building up data frame. 
+tab <- reviews_training[bin_2, ]
+
+tab <- tab %>%
+  `colnames<-`(c("Training Review Number",
+                 "\"dont\" Originating in \"don't\"",
+                 "Sentiment")) 
+
+# Building up interactive presentation table.
+
+datatable(tab, rownames = FALSE, filter = "top", 
+          
+          options = list(pageLength = 10, scrollX = T,
+                         
+          # Setting background color and font color in header.               
+                         
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Setting background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+<br>
+
+This is the general scenario: "don't" has been standardly written and it was expected to have disappeared as all stopwords and nevertheless it is still in the bag of words since we have seen it in the bag of words wordcloud.
+
+What happened? Before stopword removal, all punctuation marks have been removed and consequently "don't" has become "dont"; it is no longer identical to the stopword "don't" and, very logically, it has not been removed.
+
+This scenario happened in 19 reviews and, without change, it would happen for all short forms that include an apostrophe.   
+
+In order to prevent that scenario from happening, there are simple solutions, e.g.:
+
+- discarding stopwords, and consequently short forms, before removing punctuation;
+- or, removing punctuation marks with the exception of apostrophes, discarding stopwords, and consequently short forms, and only then removing the remaining apostrophes (apostrophes present at other places than in short forms). 
+
+An appropriate solution will be applied in the next section "Fine Tuning NLP".
+
+Now, it is time we switched to another NLP flaw that is perceptible in the bag of words wordcloud above: words collapse.
+
+<br>
+
+### Words Collapse
+
+Let's have a look at the whole bag of words (obtained before applying the sparsity process).
+
+```{r Showing all tokens upstream of the sparsity process}
+
+# Collecting all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"!
+
+tokens <- findFreqTerms(dtm, lowfreq = 1) %>%
+  as.data.frame() %>%
+  `colnames<-`("Every Token from the Whole Bag of Words")
+
+# Instead of "findFreqTerms(dtm, lowfreq = 1)" 
+# we could also have used "colnames(dtm)" ...
+
+# Building up interactive presentation table.
+
+datatable(tokens, rownames = FALSE, filter = "top", 
+          
+          options = list(width = "450px", pageLength = 10, scrollX = F,
+            
+            # Centers the single datatable column (column 0).
+            
+            columnDefs = list(list(className = 'dt-center', targets = 0)),
+            
+            # Sets background color and font color in header.   
+            
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Sets background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+First, there are several numbers. Numbers will be removed. 
+
+Second, some unigrams seem to originate from two words: 
+
+- "abovepretti",
+- "brokeni",
+- "buyit",
+- "replaceeasi",
+- "unacceptableunless",
+- etc.
+
+Let's check whether e.g. "brokeni" originates in words collapse. 
+
+<br>
+
+```{r Review generating "brokeni"}
+
+# We have to work on all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"! The corpus meets this requirement: it contains all tokens. Let's extract the row number(s) generating "brokeni".
+
+v <- 1:length(corpus)
+for(i in v) {
+  v[i] <- length(grep("brokeni", corpus[[i]]$content))
+}
+
+# Second, retrieving the corresponding review. 
+df <- data.frame(
+  reviews_training$ro[which(v >= 1)],
+  reviews_training$text[which(v >= 1)], 
+  stringsAsFactors = FALSE) %>%
+  `colnames<-`(c("Review Row Number", 
+                 'Review Producing "brokeni"'))
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, width = "2in") %>%
+  row_spec(1, bold = T, color = "white", background = harvard_crimson) 
+
+rm(v, i, df)
+```
+
+<br>
+
+What happened? Well, "broken...I" was first lowercased to "broken...i", then punctuation was removed by the function removePunctuation(), which does not insert any white space character, and "broken...i" has become "brokeni". 
+
+This has to be corrected of course for "brokeni" but also for similar cases. In the next section "Fine Tuning NLP", a general solution will be applied.
+
+<br>
+
+## Fine Tuning
+
+Instead of using the function removePunctuation() from the package tm, specific "for loops" will be developed, preprocessing reviews according to the needs stated above and in a stepwise way: 
+
+- punctuation marks other than apostrophes will be replaced with white space characters instead of just being removed;
+- short forms will be removed;
+- remaining apostrophes will be replaced with white space characters;
+- other stopwords will be removed (it is done in step 4 and not in step 2 in order to do it when absolutely all punctuation marks have been removed: please see example with "brokeni" where two words and one punctuation mark are stuck together...).
+
+Among stopwords, short forms (contractions) need to be specifically treated. Additional needs of breakdown might also emerge. Starting from the stopword list delivered by the function stopwords("english") from the package tm, four CSV files will be produced.
+
+These are the four files:
+
+- short_forms_pos.csv, with all positive short forms from stopwords("english") such as "she's", a few additional ones and numerous misspelled variants such as "she s" or "shes";
+- short_forms_neg.csv, in the same approach, for short forms such as "isn't", "daren't" but also "isn t", "isnt", etc.;
+- negation.csv, with seven negational unigrams such as "not" or "no";
+- stopwords_remaining.csv, which is self-explanatory.
+
+The 4 files have been uploaded to the GitHub repository https://github.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited . They are going to be downloaded now and integrated into NLP pre-processing.
+
+Let's rebuild the corpus, the bag of words and the interactive wordcloud (just hover over tokens to get the frequency of occurrence). 
+
+```{r Complementing NLP}
+
+# Downloading the 4 files described above and preparing them in order to rebuild the corpus, the bag of words (the Document Term  Matrix) and the wordcloud. 
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/short_forms_pos.csv"
+short_forms_pos <- read.csv(myfile, header = FALSE, 
+                            stringsAsFactors = FALSE)
+short_forms_pos <- short_forms_pos[, 2] %>% as.vector()
+
+# Normalizing (among others, apostrophes). 
+short_forms_pos <- sapply(short_forms_pos, utf8_normalize, 
+                          map_quote = TRUE)
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/short_forms_neg.csv"
+short_forms_neg <- read.csv(myfile, header = FALSE, 
+                            stringsAsFactors = FALSE)
+short_forms_neg <- short_forms_neg[, 2] %>% as.vector()
+
+# Normalizing (among others, apostrophes). 
+short_forms_neg <- sapply(short_forms_neg, utf8_normalize, 
+                          map_quote = TRUE)
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/negation.csv"
+negation <- read.csv(myfile, header = FALSE, 
+                     stringsAsFactors = FALSE) 
+negation <- negation[, 2] %>% as.vector()
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/stopwords_remaining.csv"
+stopwords_remaining <- read.csv(myfile, header = FALSE, 
+                                stringsAsFactors = FALSE) 
+stopwords_remaining <- stopwords_remaining[, 2] %>% 
+  as.vector()
+
+rm(myfile)
+
+# Creating and preprocessing corpus again.
+
+corpus_av0 <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av0 <- tm_map(corpus_av0, content_transformer(tolower))
+
+# Replacing all punctuation marks other than apostrophes with white space 
+# characters, instead of simply suppressing punctuation marks, not to risk 
+# collapsing two or more words into one. 
+# But keeping apostrophes to leave intact short forms such as "don't" 
+# and be able to identify them as short forms 
+# and as such to discard them. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av0[[i]]$content <- gsub("(?!')[[:punct:]]", " ", 
+                              corpus_av0[[i]]$content, perl = TRUE)
+}
+rm(i)
+
+# Removing extra white space characters 
+# (= removing all white space characters except one in a sequence).
+# Then removing short forms.
+
+corpus_av0 <- tm_map(corpus_av0, stripWhitespace)
+corpus_av0 <- tm_map(corpus_av0, removeWords, short_forms_neg)
+corpus_av0 <- tm_map(corpus_av0, removeWords, short_forms_pos)
+
+# Replacing all remaining apostrophes with white space characters 
+# (there might be other apostrophes than in short forms...). 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av0[[i]]$content <- gsub("[[:punct:]]", " ",                                                          corpus_av0[[i]]$content)
+}
+rm(i)
+
+# Removing n-grams from other files. 
+
+corpus_av0 <- tm_map(corpus_av0, removeWords, negation)
+corpus_av0 <- tm_map(corpus_av0, removeWords, stopwords_remaining)
+
+# Stemming words.
+
+corpus_av0 <- tm_map(corpus_av0, stemDocument)
+
+# Removing numbers and extra white space characters.
+
+corpus_av0 <- tm_map(corpus_av0, removeNumbers)
+corpus_av0 <- tm_map(corpus_av0, stripWhitespace)
+
+# Building up a bag of words in a Document Term Matrix.
+
+dtm_av0 <- DocumentTermMatrix(corpus_av0)
+
+# Managing sparsity with the sparsity threshold. 
+
+sparse_av0 <- removeSparseTerms(dtm_av0, 0.995)
+
+# Converting sparse_av0, which is a DocumentTermMatrix, 
+# to a matrix and then to a data frame.
+
+sentSparse_av0 <- as.data.frame(as.matrix(sparse_av0)) 
+
+# Making all column names R-friendly.
+
+colnames(sentSparse_av0) <- make.names(colnames(sentSparse_av0))
+
+# Let's check whether shortcomings have disappeared or not
+# by building up a wordcloud with the most frequent tokens 
+# originating from the training reviews.
+# Keeping only the 50 most frequent tokens. 
+
+df <- data.frame(word = colnames(sentSparse_av0), 
+                 freq = colSums(sentSparse_av0)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Building up wordcloud. 
+
+set.seed(1)
+wordcloud2(df, shape = 'square', color = 'random-light',
+           backgroundColor = greenish_blue, shuffle = FALSE)
+```
+
+In the wordcloud, there is no more token originating from short forms.
+
+Let's have a broader look, building up a presentation table and checking whether all abovementioned oddities have disappeared. Let's check up in the bag of words whether "dont" has indeed disappeared. 
+
+<br>
+
+```{r Checking whether "dont" has indeed disappeared}
+
+# Retrieving all tokens, upstream of the sparsity process. 
+tokens <- findFreqTerms(dtm_av0, lowfreq = 1)
+
+# Choosing the number of columns of the presentation table. 
+nc <- 5
+
+# Calculating the number of missing tokens to have a full matrix. 
+mis <- ((ceiling(length(tokens) / nc)) * nc) - length(tokens)
+
+# Building up a table.
+tokens <- as.character(c(tokens, (rep("-", mis))))
+tokens <- data.frame(matrix(tokens, ncol = nc, byrow = TRUE)) %>%
+  `colnames<-`(NULL) %>% `rownames<-`(NULL)
+
+# Looking for "dont".
+knitr::kable(tokens[51, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+rm(nc, mis)
+```
+
+<br>
+
+Yes, indeed, "dont" has disappeared. Let's check up in the same way for "ive"!
+
+<br>
+
+```{r Showing that "ive" has disappeared}
+
+knitr::kable(tokens[96, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+```
+
+<br>
+
+"ive" has also disappeared. Now "brokeni".
+
+<br>
+
+```{r Showing that "brokeni" has disappeared}
+
+knitr::kable(tokens[21, ], "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2:6, bold = T, color = "white", background = greenish_blue)
+```
+
+<br>
+
+"brokeni" has vanished as well, just as many other oddities. 
+
+The next interactive datatable allows to check up for the disappearance of some other oddities. 
+
+<br>
+
+```{r Showing all tokens after fine tuning NLP}
+
+# Collecting all tokens, upstream of the sparsity process, which the token "brokeni" couldn't pass since there is only one instance of "brokeni"!
+
+tokens <- findFreqTerms(dtm_av0, lowfreq = 1) %>%
+  as.data.frame() %>%
+  `colnames<-`("Every Token after NLP (but before Sparsity Process)")
+
+# Instead of "findFreqTerms(dtm, lowfreq = 1)" 
+# we could also have used "colnames(dtm)" ...
+
+# Building up interactive presentation table.
+
+datatable(tokens, rownames = FALSE, filter = "top", 
+          
+          options = list(width = "450px",
+            
+            pageLength = 10, scrollX = F,
+            
+            # Centers the single datatable column (column 0).
+            columnDefs = list(list(className = 'dt-center', targets = 0)),
+            
+            # Sets background color and font color in header.        
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#A41034", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Sets background color in rows. 
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+This interactive datatable allows us to search for other previously pinpointed oddities and to realize that they have indeed disappeared.
+
+By entering tokens in the search box, we can once again easily check that "dont" and "ive" have indeed disappeared. 
+
+All short forms have also vanished from the bag of words. 
+
+The same holds for "abovepretti", "replaceeasi" or "unacceptableunless", which looked like the result from words collapse. 
+
+On the contrary, "buyit" has not vanished, because at least once it was written in that way in a review.This can easily be checked up by entering "buyit" in the interactive table above with "Training Review" in the header (interactive table on blue background color).
+
+Numbers have disappeared. 
+
+I leave uncorrected some spelling errors, such as "disapoint" or "dissapoint", because this is no repetitive structure and occurrence seems marginal. 
+
+After cleaning the bag of words through NLP, let's have a first try at predicting sentiment by using tokens as predictors. 
+
+<br> 
+
+# Predicting after NLP
+
+NLP impact will be computed as the gain in accuracy provided by a standard machine learning model in comparison with the baseline model.
+
+The baseline model accuracy would be 0.50 on the training reviews, since each class (positive sentiment polarity or negative sentiment polarity) is 50 % of the training reviews as already shown. 
+
+The chosen machine learning model will be CART: it runs rather quickly and delivers clear decision trees. Running function rpart() on the training set delivers the accuracy level mentioned hereunder. 
+
+<br>
+
+```{r Running rpart() for the first time on the training set}
+
+# Adding dependent variable.
+
+sentSparse_av0 <- sentSparse_av0 %>% 
+  mutate(sentiment = reviews_training$sentiment)
+
+# Training CART with the algorithm rpart.
+
+set.seed(1)
+fit_cart_av0 <- rpart(sentiment ~., data = sentSparse_av0)
+fitted_cart_av0 <- predict(fit_cart_av0, type = "class")
+cm_cart_av0 <- confusionMatrix(fitted_cart_av0, sentSparse_av0$sentiment)
+
+# Accuracy level 
+
+df <- data.frame(round(cm_cart_av0$overall["Accuracy"], 4)) %>%
+  `rownames<-`("Model: CART") %>% 
+  `colnames<-`("Accuracy on the Training Set")
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(df)
+```
+
+<br>
+
+Now let's train the rpart method with the train() function from the package caret. 
+
+By default, the train() function would train across 3 values of cp (the complexity parameter) and 25 bootstrapped resamples for each tuned value of cp. As far as the number of tuned values is concerned, let's upgrade it to 15 to increase the odds of improving accuracy, especially as rpart runs rather quickly.
+
+The default resampling method is bootstrapping, samples being built with replacement, some reviews being picked up twice or more and some other reviews not being selected. This method seems especially appropriate here because the size of each resample will be the same of the size of the training set, which is already limited, i.e. 668. Working with e.g. K-fold cross-validation would imply further splitting the training set. 
+
+ Will accuracy improve?
+
+<br>
+
+```{r Running rpart with train() and 15 as tuneLength}
+
+# Running rpart on the training set. 
+
+set.seed(1)
+fit_cart_tuned_av0 <- train(sentiment ~ .,
+                         method = "rpart",
+                         data = sentSparse_av0,
+                         tuneLength = 15,
+                         metric = "Accuracy")
+fitted_cart_tuned_av0 <- predict(fit_cart_tuned_av0)
+cm_cart_tuned_av0 <- confusionMatrix(as.factor(fitted_cart_tuned_av0), 
+                                     as.factor(sentSparse_av0$sentiment))
+
+# The tuned rpart model delivers an accuracy level of
+
+df <- data.frame(round(cm_cart_tuned_av0$overall["Accuracy"], 4)) %>%
+  `rownames<-`("Model: CART + cp Tuning") %>% 
+  `colnames<-`("Accuracy on the Training Set")
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(df)
+```
+
+<br>
+
+Accuracy increases from 76.5 to 78.3. For the record, let's have a look at a graph showing how accuracy evolves across the 15 cp values chosen by the train() function. 
+
+<br>
+
+```{r Graph about accuracy across cp values on resamples}
+
+graph <-  
+  ggplot(fit_cart_tuned_av0) + 
+  geom_line(col = greenish_blue, size = 1) +
+  geom_point(col = harvard_crimson, size = 4) +
+  ggtitle("Average Bootstrap Accuracy across cp Values") +
+  xlab("Complexity Parameter") + ylab("Average Accuracy (Bootstrap)") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16), 
+        axis.text.x = element_text(size = 12), 
+        axis.text.y = element_text(size = 12))
+
+p <- ggplotly(graph, dynamicTicks = TRUE, width = 800, height = 500 )
+
+# Centering the graph, because the centering opts_chunk previously inserted is not operative in the case of the ggplotly() function. 
+
+htmltools::div(p, align = "center" )
+
+rm(graph)
+```
+
+<br>
+
+The optimal value of cp is zero. This means that the train() function has kept the decision tree as complex as possible by assigning a zero value to the complexity parameter. 
+
+On the graph above, maximum accuracy is a bit lower than the level previously indicated. Why is it different? Because, on the graph, it is, for each cp value, the average accuracy on the 25 bootstrapped resamples, while accuracy previously given related to the whole training set. 
+
+On the whole training set, the rpart model without tuning delivers approximately 76.8 % accuracy and the rpart model with tuning 78.1 %. Both levels are substantially higher than accuracy provided by the baseline model. 
+
+The baseline model would predict a positive evaluation for all reviews (or alternatively a negative evaluation for all reviews) since prevalence is 50 %. Prevalence should show in the accuracy level delivered by the baseline model on the training set. Let's check it up. 
+
+<br>
+
+```{r Accuracy from baseline model}
+
+# Document Term Matrix from training reviews, after Sparsity Process
+
+df <- sentSparse_av0
+
+# Data frame with 2 columns, one with positive sentiment polarity everywhere (baseline model) and one column with actual sentiment polarity
+
+pred_baseline <- 
+  data.frame(sentiment = rep(" Pos", nrow(df))) %>%
+  mutate(sentiment = factor(sentiment, levels = levels(df$sentiment)))
+
+# Confusion matrix
+
+cm_baseline <- confusionMatrix(pred_baseline$sentiment, 
+                               as.factor(df$sentiment)) 
+
+# Presentation table of baseline model accuracy
+
+df <- data.frame(sprintf("%.4f", 
+                  round(cm_baseline$overall["Accuracy"], 4))) %>%
+      `colnames<-`("Accuracy on the Training Set") %>%
+      `rownames<-`("Model: Baseline")
+
+# Layout
+
+knitr::kable(df, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(df)
+```
+
+<br>
+
+Let's summarize results from the three models, not only with accuracy but also with additional performance metrics. 
+
+<br>
+
+```{r Summary table of the previous 3 models, include = FALSE}
+
+# Denominations of performance metrics
+colname <- c("MODEL ID", "SHORT DESCRIPTION", "ACCURACY", 
+             "SENSITIVITY", "NEG PRED VAL", 
+             "SPECIFICITY", "POS PRED VAL")
+
+# Denominations of models
+models <- c("baseline", "cart_av0", "cart_tuned_av0")
+
+# Short descriptions of models
+description <- c("baseline model", "CART", "CART + tuning")
+
+# Denominations of confusion matrices from the 3 models
+cm <- c("cm_baseline", "cm_cart_av0", "cm_cart_tuned_av0")
+
+
+# Receptacle table for performance metric measurements
+tab <- data.frame(matrix(1:(length(colname) * length(models)),
+                   ncol = length(colname), nrow = length(models)) * 1)
+
+# for loop collecting information
+i <- 1
+for (i in 1:length(models)) {
+  tab[i, 1] <- models[i]
+  tab[i, 2] <- description[i]
+  tab[i, 3] <- eval(parse(text = paste(cm[i], 
+                     "$overall['Accuracy']", sep = "")))
+  tab[i, 4] <- eval(parse(text = paste(cm[i], 
+                     "$byClass['Sensitivity']", sep = "")))
+  tab[i, 5] <- eval(parse(text = paste(cm[i], 
+                     "$byClass['Neg Pred Value']", sep = "")))
+  tab[i, 6] <- eval(parse(text = paste(cm[i], 
+                     "$byClass['Specificity']", sep = "")))
+  tab[i, 7] <- eval(parse(text = paste(cm[i], 
+                     "$byClass['Pos Pred Value']", sep = "")))
+}                 
+
+# Neg Pred Val is indeterminate for the baseline model since it is the result from a division by zero. Let's first assign a fake value to the Neg Pred Val from the baseline model in order to easily round all columns. 
+
+tab[1, 5] <- 0
+tab_av0 <- tab %>% mutate_at(vars(3:7), funs(round(., 4))) %>%
+           `colnames<-`(colname)
+
+# Indicating true nature of result of Neg Pred Val for baseline model.
+tab_av0[1, 5] <- "Div. by 0"  
+
+# Presentation table
+knitr::kable(tab_av0, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1, bold = T, strikeout = T, color = "white", 
+           background = harvard_crimson) %>%
+  row_spec(2, bold = T, color = "white", 
+           background = greenish_blue) %>%
+  row_spec(3, bold = T, color = "white", 
+           background = paris_green)
+
+rm(cm_baseline, pred_baseline, models, description, cm, tab)
+```
+
+<br>
+
+In the table above, on row 1, fonts have been stricken through to indicate that this model is discarded because if delivers only 50 % accuracy and looks like a dead-end path. 
+
+The other two models should be seen as a cumulative process bringing accuracy improvement in a stepwise and incremental way, with the one on green background being the best in accuracy. Models 2 and 3 deliver higher accuracy but also asymmetry between other performance metrics: sensitivity and negative predictive value are lower than specificity and positive predictive value. This reflects false negatives being more numerous than false positives. False negatives are predictions pointing to "Neg" while the reference value is " Pos". This is an insight for text mining: perusing false negatives and coming with actionable findings. 
+
+In order to confirm that false negatives are more numerous than false positives, let's have a look at the confusion matrix for both models. First, the confusion matrix from the rpart model without tuning. 
+
+<br>
+
+```{r Confusion matrix for the rpart model without tuning}
+
+# Metric abbreviations in confusion matrices
+name <- c("TP = ", "FN = ", "FP = ", "TN = ")
+
+# Building up confusion matrix data in vector format.
+tab <- table(fitted_cart_av0, sentSparse_av0$sentiment) %>% 
+  as.vector() %>% paste(name, ., sep = "")
+
+# Ordering data in confusion matrix format and inserting headers in the confusion matrix. 
+tab <- data.frame(matrix(tab, ncol = 2, nrow = 2, byrow = FALSE)) %>%
+  `colnames<-`(c("Actually positive", "Actually negative")) %>%
+  `rownames<-`(c("Predicted positive with CART", 
+                 "Predicted negative with CART"))
+
+# Layout
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = "black") %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue) %>%
+  column_spec(3, bold = T, color = "white", background = harvard_crimson)
+
+rm(tab)
+```
+
+<br>
+
+The weak point lies in the first column, on greenish blue background: the relatively high number of false negatives and, as a corollary, the relatively low number of true positives. On the reference positive class (" Pos" in label), predicting  seems problematic or at the very least challenging since false negatives are rife. On the contrary, on the reference negative class ("Neg" in label), predicting  has run smoothly, with a satisfactorily low number of false positives. 
+
+The tuned rpart model is expected to slightly reduce the excess in false negatives.
+
+<br>
+
+```{r Confusion matrix for the rpart model with tuning}
+
+# Metric abbreviations in confusion matrices
+name <- c("TP = ", "FN = ", "FP = ", "TN = ")
+
+# Building up confusion matrix data in vector format.
+tab <- table(fitted_cart_tuned_av0, sentSparse_av0$sentiment) %>% 
+  as.vector() %>% 
+  paste(name, ., sep = "")
+
+# Ordering data in confusion matrix format and inserting headers in the confusion matrix.
+tab <- data.frame(matrix(tab, ncol = 2, nrow = 2, byrow = FALSE)) %>%
+  `colnames<-`(c("Actually positive", "Actually negative")) %>%
+  `rownames<-`(c("Predicted positive with CART + tuning", 
+                 "Predicted negative with CART + tuning"))
+
+# Layout
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = "#333333") %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue) %>%
+  column_spec(3, bold = T, color = "white", background = harvard_crimson)
+
+rm(tab, tokens, name)
+rm(cm_cart_av0, fit_cart_av0, fitted_cart_av0)
+```
+
+<br>
+
+With the tuned rpart model, accuracy has slightly improved: the sum of numbers on the main diagonal is larger. 
+
+On the green background, predicting on the reference positive class is less prolific in false negatives and, as a corollary, true positives are more predominant. 
+
+On the secondary diagonal, imbalance between false negatives and false positives is less marked, not only because there are less false negatives but also because there are more false positives. Nevertheless false negatives remain the weak point, being twice as numerous as false positives. 
+
+False negatives - and false positives - will be perused through text mining in the next section, looking for new insights towards accuracy improvement. 
+
+<br>
+
+# Text Mining
+
+In this section, we are going to peruse the training reviews leading to false negatives or false positives with the CART model with cp tuning. This will be done with a view to pinpointing words, expressions, or phrases whose sentiment polarity could be used to better predict. 
+
+Another question will be raised: should topic-related words and tokens be maintained in the bag of words? Could they have any predictive impact?
+
+Let's first build an interactive table with all training reviews leading to false negatives or false positives with the CART model with cp tuning. Let's start with false negatives, because there are more false negatives.
+
+<br>
+
+```{r False negatives from model cart_tuned}
+
+# To identify false negatives, we need both the actual review polarity and the predicted review polarity. Consequently, we are going to combine both variables in one data frame.  
+
+df <- data.frame(sentiment = reviews_training$sentiment,
+                 pred = fitted_cart_tuned_av0) 
+
+# We have a false negative if actual review polarity is positive and if predicted review polarity is negative. If CART delivers a false negative for a specific row, then the next command below produces 1; if it is a false positive, the result is -1; a true positive or a true negative gives 0. So, 1 corresponds to what we are looking for, i.e. false negatives, -1 corresponds to false positives and 0 corresponds to either true positives or true negatives.  
+
+FN_train <- ifelse(df$sentiment == " Pos", 1, 0) - 
+            ifelse(df$pred == " Pos", 1, 0)
+
+# Now, we have to generate a dichotomic vector with one specific value for false negatives or another specific value for all other cases (false positives, true positives or true negatives). That's exactly what the next command does. Indeed, if the command above gives 1 (false negative), then the command below delivers 1 as well while delivering 0 in all other cases (false positives, true positives or true negatives). 
+
+FN_train <- ifelse(FN_train == 1, 1, 0)
+
+# Row numbers corresponding to false negatives
+
+FN <- which(FN_train == 1)
+
+# Now let's build up an interactive table with all false negatives delivered by CART with cp tuning. 
+
+# Let's create a receptacle data frame.
+
+df_fn <- data.frame(row = FN,
+                 review = as.character(1:length(FN)),
+                 tokenized = as.character(1:length(FN))) %>%
+  `colnames<-`(c("Row", 
+                 "Training Reviews leading to False Negatives", 
+                 "Tokenized"))
+
+# In order to populate the receptacle data frame, let's build up a for loop garnering data, i.e. row number, training review and tokenized training review.
+
+for (i in 1:length(FN)) {
+  row <- FN[i]
+  df_fn[i, 2] <- reviews_training$text[row]
+  df_fn[i, 3] <- corpus_av0[[row]]$content
+}
+
+rm(i, row)
+
+# Converting row numbers to characters in order ... to have them left-aligned in the interactive data table below. 
+
+df_fn <- df_fn %>%
+  mutate(Row = as.character(Row))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df_fn, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 10, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+In the interactive table above, if we scroll through false negatives several scenarios appear. Let's classify false negatives into four scenarios, identified by the pivotal pieces of information that were not used by CART to produce the right polarity, i.e. the positive polarity:
+
+- subjective information unigrams unused; 
+- subjective information multigrams unused;
+- negational unigrams unused;
+- negative short forms unused.
+
+<br>
+
+## Subjective Information
+
+When consulting the table of false negatives above, we can pinpoint some subjective information unigrams unused, i.e. words/tokens encompassing some subjective information that points to the right polarity.  
+
+These words, and the related standardized tokens, could be classified in several categories. Here, it has been opted for three main categories:
+
+- words (and tokens) expressing positive emotions, such as "impressed", "joy", and "glad";
+- words (and tokens) expressing appreciation in a non-technical way, such as "fine", "awesome", and "rocks";
+- words (and tokens) expressing technical qualities but outside of precise quantification, such as "fast", "prompt", and "sturdy".
+
+The first category is sentiment-related and so is the second category in most cases and to some degree. The third category relates to technicalities but without quantification. The three categories can be deemed as compliance-related, expressing to some degree compliance with expectations, requirements or advertisements. 
+
+To sum it up, the three categories will be referred to altogether in this project using phrases such as "subjective information" or "words conveying subjective information" or "tokens conveying subjective information". 
+
+That subjective information is readily readable from a human point of view. But, in spite of these words/tokens, the polarity has been wrongly read by CART. Why? 
+
+Maybe because these words/tokens are not present in the final decision tree? Or maybe because other words/tokens have precedence in the decision tree? 
+
+Let's have a look at the final decision tree delivered by CART with cp tuning.
+
+<br>
+
+```{r Decision tree from CART with tuning}
+palette <- c(super_light_gray, super_light_taupe)
+
+tree <- prp(fit_cart_tuned_av0$finalModel, uniform = TRUE, cex = 0.8, 
+    box.palette = palette, border.col = "white") 
+
+# Keeping tree for further use. 
+```
+
+<br>
+
+"Unfortunately", the tokens pinpointed among the false negatives do not show in the decision trees. Let's visualize the decision tree from the CART model with cp tuning.
+
+What types of tokens can be seen in the decision tree? 
+
+There is a majority of tokens conveying subjective information ("great", "comfort", "love", "like", "disappoi", etc.). They are usually the highest ranked. 
+
+There are also other types of tokens, but at a lower level:
+- intent-related tokens ("purchas", "buy") or
+- topic-related tokens ("plug", "ear").
+
+Which is an interesting insight. In CART, tokens conveying subjective information predominate, which is not at all surprising! This points to solutions allocating higher priority to tokens conveying subjective information. 
+
+Although a majority of tokens are conveying subjective information in the decision tree, we do not find that many tokens with subjective information pinpointed among false negatives. It can be a matter of word (or token) frequency. This can be first checked up in the wordcloud that has already been visualized. 
+
+```{r Wordcloud}
+
+# Getting the bag of words without an irrelevant column.
+
+df <- sentSparse_av0[, - ncol(sentSparse_av0)]
+
+# Building up a vector with the 40 most frequent tokens in the bag of words.
+
+temp <- data.frame(word = colnames(df), freq = colSums(df)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Creating an interactive wordcloud. 
+
+set.seed(1)
+wordcloud2(temp, shape = "square", color = "random-light",
+           backgroundColor = greenish_blue, shuffle = FALSE)
+
+rm(df)
+
+# Let's notice that temp is not removed in order to further use it. 
+```
+
+For illustrative purposes, tokens can be visualized in decreasing order of frequency in the interactive histogram below.
+
+<br>
+
+```{r Token frequency histogram}
+
+# Preparing the histogram. 
+graph <-  temp %>% mutate(word = reorder(word, freq)) %>%
+  ggplot(aes(word, freq)) + 
+  geom_bar(stat = "identity", width = 0.80, 
+           color = "#007ba7", fill = "#007ba7") + 
+  coord_flip() +
+  ggtitle("Token Frequency") +
+  xlab("Token") + ylab("Frequency") +
+  theme(plot.title = element_text(hjust = 0.5, 
+                                  size = 16, face = "bold"),
+        axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16), 
+        axis.text.x = element_text(angle = 45, 
+                                   hjust = 1, size = 12), 
+        axis.text.y = element_text(size = 12))
+
+# Making the graph interactive.
+p <- ggplotly(graph, dynamicTicks = TRUE, 
+              width = 500, height = 1000 )
+
+# Centering the interactive graph.
+htmltools::div(p, align = "center" )
+
+rm(graph, p)
+```
+
+Among tokens depicted in the wordcloud and in the histogram, there are 
+
+- topic-related tokens ("phone", "batteri", "headset", "sound", "ear", etc.),
+- intent-related tokens ("purchas", "buy"),
+- compliance-related tokens, expressing compliance or incompliance with 
+expectations, requirements or advertisements ("fit", "comfort", "problem", etc.),
+- sentiment-related tokens other than in previous category ("love", "like", etc.).
+
+Most decision tree tokens appear in the wordcloud (or the histogram). The proportion of decision tree tokens appearing in the wordcloud or in the histogram. 
+
+```{r Proportion of decision tree tokens appearing in the wordcloud or in the histogram}
+
+# Collecting decision tree tokens in a character vector.
+
+tree_tokens <- tree$obj$frame$var
+tree_tokens <- tree_tokens[!tree_tokens == "<leaf>"]
+
+# Collecting wordcloud tokens. They have already been stored in the data frame "temp", and in particular in the column whose name is "word".
+
+wordcloud_tokens <- temp$word
+
+# Extracting tree tokens that also apppear in the wordcloud and in the histogram.
+
+intersection <- intersect(tree_tokens, wordcloud_tokens)
+
+# Computing proportion of decision tree tokens appearing in the wordcloud or in the histogram.
+
+prop <- length(intersection) * 100 / length(tree_tokens)
+prop <- round(prop, 0)
+prop <- paste(prop, "%", sep = " ")
+
+# Building up a presentation data frame for the proportion.
+
+tab <- data.frame(prop) %>%
+  `colnames<-`("Proportion of Tree Tokens Appearing in the Wordcloud")
+
+# Layout
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = "white", background = greenish_blue) 
+
+rm(tab)
+```
+
+So, there is some correlation between decision tree tokens and wordcloud – or histogram – tokens. Token frequency is the criterion for the wordcloud and matters for the decision tree. But token frequency is not enough to enter the decision tree: tokens need discriminant predictive power. So, "phone" is the wordcloud token with the highest frequency – 116 occurrences – but the decision tree is not comprised of *phone*; the reason of it seems obvious. On the contrary, *great* only has 69 occurrences and appears on top of the decision tree. 
+
+We can better visualize this when looking at some *rpart* output.
+
+<br>
+
+```{r Decision tree output, class.output = "bg-primary"}
+
+# class.output = "bg-primary" gives white color and blue background color.
+
+tree$obj
+```
+
+<br>
+
+We can see the rationale of the decision tree. *great* arrives on top, with presence in 68 training reviews – we saw in the interactive wordcloud and histogram that the word (token) frequency was in fact 69 so there must be a review with twice the word (token) *great*. *great* is present in 64 reviews with positive sentiment polarity and only in 4 reviews with negative sentiment polarity.
+
+The second token in the decision tree is *good*, present in 45 reviews, of which 38 reviews with positive sentiment polarity. 
+
+*comfort* is present in 10 training reviews, of which only 1 is negative. It comes before *recommend* with presence in 17 training reviews but 5 of them have negative sentiment polarity. 
+
+Below *comfort* we also find *like* with presence in 18 training reviews but 7 of them have negative sentiment polarity.
+
+Now, it is time we went back to false negatives containing positive subjective information words (tokens) that has not been used to rightly predict positive sentiment polarity. 
+
+To visually check that positive subjective information words (tokens) can indeed flip sentiment polarity and help avoid some false negatives, let's collect false negatives containing some of these words, e.g. 
+
+- glad,
+- impressed,
+- joy,
+- awesome,
+- fine,
+- rocks,
+- fast,
+- prompt,
+- and sturdy.
+
+```{r False negatives with positive subjective information}
+
+# Patterns we are looking for in false negatives
+
+patterns <- c("glad", "impressed", "joy", "awesome", "fine", "rocks", "fast", "prompt", "sturdy")
+
+# Collapsing all words, with the operator | between words.
+
+patterns <- paste(patterns, collapse = "|")
+
+# A data frame with the false negatives has already been created. It has been called df_fn. Column names are "Row", "Training Review", and "Tokenized". Let's onl keep rows with at least one of the words contained in "patterns". 
+
+# Let's filter.
+
+df <- df_fn %>%
+  filter(str_detect(`Training Reviews leading to False Negatives`, 
+                    patterns) == TRUE) %>%
+  `colnames<-`(c("Row",
+               "False Negatives with Positive Information",
+               "Tokenized"))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+That positive subjective information has not been used to predict positive polarity for the corresponding reviews. 
+
+We can think of two possible reasons: on the one hand, maybe these words were also present in numerous reviews with actual negative sentiment polarity; on the other hand, these words do not show up in the wordcloud, which means their occurrence frequency is at best not high and at worst very limited. 
+
+Acting on the first reason could be done by choosing a more performant algorithm than rpart, e.g. random forest. This will not be done at this stage because random forest can have a tendency to stick to data, even to outliers, on the training set and to be somewhat disappointing on the validation set (overfitting). This might camouflage problems. 
+
+It would be possible to act on the second reason: regrouping, in one way or another, the words (tokens) containing positive subjective information might be an avenue of research. 
+
+This looks like an interesting insight. 
+
+In conclusion, it might be impactful to garner subjective information conveyed by tokens such as "super", "prettier", "infatu", "awesom", etc. Since CART doesn't do it, why not replace such tokens with a generic positive token? This would empower subjective information by building high frequency generic tokens only typified by sentiment orientation.  
+
+In this project, polarity of some tokens conveying positive subjective information will be inserted in additional files. That is one avenue of improvement that will be investigated in ... 
+
+In a similar way, negative subjective information can also impact sentiment polarity. Let's have a look at training reviews leading to false positives with the tuned *rpart* model. 
+
+<br>
+
+```{r False positives from model cart_tuned}
+
+# To identify false positives, we need both the actual review polarity and the predicted review polarity. Consequently, we are going to combine both variables in one data frame.  
+
+df <- data.frame(sentiment = reviews_training$sentiment,
+                 pred = fitted_cart_tuned_av0) 
+
+# We have a false negative if actual review polarity is positive and if predicted review polarity is negative. If CART delivers a false negative for a specific row, then the next command below produces 1; if it is a false positive, the result is -1; a true positive or a true negative gives 0. So, 1 corresponds to what we are looking for, i.e. false negatives, -1 corresponds to false positives and 0 corresponds to either true positives or true negatives.  
+
+FP_train <- ifelse(df$sentiment == "Neg", 1, 0) - 
+            ifelse(df$pred == "Neg", 1, 0)
+
+# Now, we have to generate a dichotomic vector with one specific value for false negatives or another specific value for all other cases (false positives, true positives or true negatives). That's exactly what the next command does. Indeed, if the command above gives 1 (false negative), then the command below delivers 1 as well while delivering 0 in all other cases (false positives, true positives or true negatives). 
+
+FP_train <- ifelse(FP_train == 1, 1, 0)
+
+# Row numbers corresponding to false negatives
+
+FP <- which(FP_train == 1)
+
+# Now let's build up an interactive table with all false negatives delivered by CART with cp tuning. 
+
+# Let's create a receptacle data frame.
+
+df_fp <- data.frame(row = FP,
+                 review = as.character(1:length(FP)),
+                 tokenized = as.character(1:length(FP))) %>%
+  `colnames<-`(c("Row", 
+                 "Training Reviews leading to False Positives", 
+                 "Tokenized"))
+
+# In order to populate the receptacle data frame, let's build up a for loop garnering data, i.e. row number, training review and tokenized training review.
+
+for (i in 1:length(FP)) {
+  row <- FP[i]
+  df_fp[i, 2] <- reviews_training$text[row]
+  df_fp[i, 3] <- corpus_av0[[row]]$content
+}
+
+rm(i, row)
+
+# Converting row numbers to characters in order ... to have them left-aligned in the interactive data table below.
+
+df_fp <- df_fp %>%
+  mutate(Row = as.character(Row))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df_fp, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+In parallel with false negatives, some training reviews leading to false positives contain subjective information that could flip sentiment polarity to positiveness. This time, it is of course negative subjective information. Here are a few examples: *unusable*, *embarrassing*, and *unreliable*. 
+
+Consequently some words and tokens with negative subjective information will be inserted into additional files. 
+
+But perusing false positives leads to another statement: sentiment polarity is often flipped by negation. This means that negation should be excluded from the stopwords that are discarded. 
+
+Let's switch now to negation.
+
+<br>
+
+## Negation
+
+Another category of words (tokens) can also flip sentiment polarity: negational unigrams, or, simplier, negation, just as *not* or *no*. Among false negatives, we could notice some occurrences of negation that flipped sentiment polarity but that could obviously not be taken into account since these negational unigrams were considered as stopwords and had, for that reason, been discarded from tokens. 
+
+Let's start with false positives because we expect more negation occurrences among false positives than among false negatives.  
+
+<br>
+
+```{r False positives with negation}
+
+# Let's determine the patterns we are looking for in false negatives. Since most comments are capitalized, variants have been provided with capitalization. Around some negational unigrams, there is a leading empty space character and/or a trailing empty space character in order to avoid picking up longer unigrams containing some negational unigrams, e.g. "notice" instead of "no" or instead of "not". 
+
+patterns <- c("neither", "Neither", "never", "Never", " no ", "No ", "none", "None", " nor ", " not ", "Not ", "nothing", "Nothing")
+
+# Collapsing all words, with the operator | between words.
+
+patterns <- paste(patterns, collapse = "|")
+
+# A data frame with the false negatives has already been created. It has been called df_fn. Column names are "Row", "Training Review", and "Tokenized". Let's keep only rows with at least one of the words contained in "patterns". 
+
+# Let's filter.
+
+df <- df_fp %>%
+  filter(str_detect(`Training Reviews leading to False Positives`, 
+                    patterns) == TRUE) %>%
+  `colnames<-`(c("Row", "False Positive Review with Negation",                      "Tokenized"))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+```{r False negatives with negation}
+
+# Let's determine the patterns we are looking for in false negatives. Since most comments are capitalized, variants have been provided with capitalization. Around some negational unigrams, there is a leading empty space character and/or a trailing empty space character in order to avoid picking up longer unigrams containing some negational unigrams, e.g. "notice" instead of "no" or instead of "not". 
+
+patterns <- c("neither", "Neither", "never", "Never", " no ", "No ", "none", "None", " nor ", " not ", "Not ", "nothing", "Nothing")
+
+# Collapsing all words, with the operator | between words.
+
+patterns <- paste(patterns, collapse = "|")
+
+# A data frame with the false negatives has already been created. It has been called df_fn. Column names are "Row", "Training Review", and "Tokenized". Let's keep only rows with at least one of the words contained in "patterns". 
+
+# Let's filter.
+
+df <- df_fn %>%
+  filter(str_detect(`Training Reviews leading to False Negatives`, 
+                    patterns) == TRUE) %>%
+  `colnames<-`(c("Row", "False Negative Review with Negation",                      "Tokenized"))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+The bigrams *no problem" or *no trouble* are clear from a human point of view but this bigram has become *troubl*, the negational token *no* having been removed with all other stopwords. Even if *troubl* is polarized under a generic negative token, as suggested above, the right polarity of *no trouble* wouldn't show. Two avenues are opened up: the whole bigram *no trouble* could be converted into a generic token with positive orientation or, more generally, negational stopwords such as *not* or *no* could no longer be removed, which is another avenue for improvement. 
+
+Actually, the number of training reviews with *not* or *no* is limited among the false negatives. But it was much higher among false positives. Moreover, frequency could also be higher in the validation set, which we do not know. Keeping negational unigrams will be given a try in ...
+
+Up to now, negation has been shown in negational unigrams but negation can also be encapsulated into negative short forms (also called "contractions") and they could impact both false negatives and false positives. Consequently, keeping negative short forms will also be given a try. 
+
+<br>
+
+## Negative Short Forms
+
+Among false positives, there are many negative short forms that flip sentiment polarity to negativeness. There are also some among false negatives.
+
+Consequently, negative short forms will also be removed from the stopwords that are discarded.
+
+<br>
+
+## Multigrams 
+
+Sentiment can also be expressed through associations of words beyond negation cases already treated. 
+
+In some cases, these are rather stereotyped phrases. Let's have a look at a few training reviews leading to false negatives but containing multigrams whose consideration could flip sentiment polarity prediction to the right status, i.e. positive sentiment polarity.
+
+<br>
+
+```{r False negatives with positive multigrams}
+
+# Patterns we are looking for in false negatives
+
+patterns <- c(" a bargain ", " a winner ", " any problem "," five star ", " must have ", " no problem "," thumbs up ", "Whoa", "whoa")
+
+# Collapsing all words, with the operator | between words.
+
+patterns <- paste(patterns, collapse = "|")
+
+# A data frame with the false negatives has already been created. It has been called df_fn. Column names are "Row", "Training Review", and "Tokenized". Let's onl keep rows with at least one of the words contained in "patterns". 
+
+# Let's filter.
+
+df <- df_fn %>%
+  filter(str_detect(`Training Reviews leading to False Negatives`, 
+                    patterns) == TRUE) %>%
+  `colnames<-`(c("Row",
+               "False Negatives with Positive Information",
+               "Tokenized"))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+In the table above, we can see 7 examples of false negatives containing positive multigrams that can flip sentiment polarity to positiveness. These are only examples. 
+
+<br>
+
+## Topic-related Tokens
+
+It has been seen that some topic-related tokens have high frequency but do not appear in the decision tree. So, "phone" has the highest frequency but is not present in the decision tree. "batteri", "headset" do not even appear in the decision tree either.
+
+This difference between wordcloud and decision tree might be insightful. Should topic-related tokens be discarded except the few ones that appear in the decision tree? Should they be excluded to make the bag of words less messy? But would they systematically be excluded as well in other machine learning models? For simplicity, they will all be kept. 
+
+<br>
+
+## Context
+
+Some reviews have delivered some more difficult cases. Here are a few examples among false positives. 
+
+<br>
+
+```{r False positives with negative sentiment multigrams}
+
+# A data frame with the false negatives has already been created. It has been called df_fn. Column names are "Row", "Training Review", and "Tokenized". Let's keep only rows with at least one of the words contained in "patterns". Let's pick up 5 rows with figurative usage, slang, sarcasm or multifaceted wording. 
+
+df <- df_fp %>% 
+  filter(Row %in% c(54, 111, 113, 433, 586)) %>%
+  `colnames<-`(c("Row", "False Positive Review with Negative Sentiment",                      "Tokenized"))
+
+# Creating the interactive data table, using the DT package. 
+
+datatable(df, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+            initComplete = JS(
+              "function(settings, json) {",
+              "$(this.api().table().header()).css({
+                  'background-color': '#a41034', 
+                  'color': 'white'});", 
+              "}"),
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "#d6c0b0";','}',
+              '}')
+            )
+          )
+```
+
+<br>
+
+There can be figurative wording, sarcasm, irony, metaphors, multifaceted reviews, etc.
+
+The table above gives five examples of more complex wording: 
+
+- metaphor such as *crawl* referring to slowness;
+- slang such as *crap* in review 586; 
+- sarcasm such as in review 113; 
+- multifaceted review mentioning of strong and weak points such as in reviews 54 and 433. 
+
+Some metaphors and some slang can enter additional files. Of course, *rpart* a word like crawl used as a metaphor or slang such as crap. But among the training reviews, the occurrence frequency of these words is very low; knowing that the frequency among the training reviews selected at random is very limited, the conditional probability of having them in the validation set is also very limited; but including them into an additional file of subjective information (in these cases with negative sentiment polarity) can only be harmless if not useful. 
+
+Sarcasm is out of reach in this working paper. 
+
+Multifaceted wording might be better tackled by more sophisticated models below. A very simple trick will get a try: in case of multifaceted wording, the word *but* often indicates restriction and is often the dominant meaning: *but* will be removed drom stopwords and considered as a negative unigram. 
+
+Let's check up that *but* is most of the time introducing impactful negative information. We'll do that by collecting all training reviews containing the word *but*.
+
+<br>
+
+```{r Training reviews with the word "but "}
+
+# Building up data frame.
+
+tab <- reviews_training %>% 
+  `colnames<-`(c("Row Number", "Training Review", "Sentiment")) %>%
+  filter(str_detect(`Training Review`, "but ") == TRUE)
+
+# Building up interactive presentation table.
+
+datatable(tab, rownames = FALSE, filter = "top", 
+          options = list(pageLength = 5, scrollX = T,
+                         
+          # Setting background color and font color in header.               
+                         
+            initComplete = JS(
+              'function(settings, json) {',
+              '$(this.api().table().header()).css({
+                  "background-color": "#507786", 
+                  "color": "white"});', 
+              '}'),
+            
+            # Setting background color in rows. 
+            
+            rowCallback = JS(
+              'function(row, data, index, rowId) {',
+              'console.log(rowId)',
+              'if(rowId >= 0) {',
+                   'row.style.backgroundColor = "powderblue";','}',
+              '}')
+            )
+          )
+
+rm(tab)
+```
+
+Using the interactive table above, we can easily notice that 19 reviews with *but * in them lead to negative sentiment polarity. Consequently, we are going to remove *but* from the stopwords and let it stand on its own as a token in the bag of words. 
+
+<br>
+
+## Conclusion
+
+<br>
+
+In text mining, insights have been obtained
+
+- by comparing token frequency in the bag of words (wordcloud and histogram) and in token lists from CART and Random Forest
+- and by perusing false negatives and positives in CART and Random Forest.
+
+Among insights, let's mention:
+
+- topic-related tokens predominate in the bag of words;
+- topic-related tokens show in limited number and at a lower level in the CART decision tree and in the predictor importance list from Random Forest;
+- subjective information tokens predominate in the CART decision list and in the predictor importance list from Random Forest;
+- many subjective information tokens show in false negatives or false positives but neither in the CART decision tree nor in the predictor importance list from Random Forest (first 20 positions);
+- many negational n-grams are present in reviews giving false negatives or positives and often reverse sentiment polarity of the reviews but they cannot be made actionable in machine learning since they have been removed from the bag of words as stopwords;
+- these negational n-grams can be negational unigrams such as "not" or negative short forms such as "isn't".
+
+In the next section, these text mining insights will be tentatively transposed into NLP and machine learning actions towards more accuracy.
+
+Three avenues of improvement have been opened up:
+
+- integrating negational unigrams (*not*, etc.);
+- integrating negative short forms (*isn't*, etc.);
+- establishing polarized lists of subjective information tokens and replacing instances of these tokens in reviews with one generic token, either positive or negative.
+
+Stepwise, the three avenues will be quantitatively tested. 
+
+The whole research has been performed only on training reviews without any kind of intermixture with validation reviews. 
+
+<br>
+
+# Predicting after TM
+
+Several avenues of improvement have been drawn in the previous section through text mining. Each avenue will now be followed and its merits will be evaluated on the basis of prediction accuracy.
+
+<br>
+
+## Negation
+
+Negational unigrams have been introduced, NLP has be rerun as well as the CART model with tuning, which is used as a performance yardstick. Here are the results. 
+
+<br>
+
+```{r Negational unigrams such as "not" get in}
+
+# Building up new corpus.
+
+corpus_av1_a <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av1_a <- tm_map(corpus_av1_a, content_transformer(tolower))
+
+# Replacing all punctuation marks with white space characters, instead of just removing punctuation marks, to prevent tokens like "brokeni" from being generated. Keeping apostrophes to leave intact short forms such as "don't" so that they can be removed as stopwords.  
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_a[[i]]$content <- gsub("(?!')[[:punct:]]", " ", 
+                                    corpus_av1_a[[i]]$content, perl = TRUE)
+}
+rm(i)
+
+# Removing short forms after regulating white space characters.
+
+corpus_av1_a <- tm_map(corpus_av1_a, stripWhitespace)
+corpus_av1_a <- tm_map(corpus_av1_a, removeWords, short_forms_neg)
+corpus_av1_a <- tm_map(corpus_av1_a, removeWords, short_forms_pos)
+
+# Removing remaining apostrophes (there can be apostrophes outside of short forms). 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_a[[i]]$content <- gsub("[[:punct:]]", " ", 
+                                    corpus_av1_a[[i]]$content)
+}
+rm(i)
+
+# Removing stopwords_remaining, stemming, removing numbers, digits and multiple white space characters (leaving only one white space character at a time).
+
+corpus_av1_a <- tm_map(corpus_av1_a, removeWords, stopwords_remaining)
+corpus_av1_a <- tm_map(corpus_av1_a, stemDocument)
+corpus_av1_a <- tm_map(corpus_av1_a, removeNumbers)
+corpus_av1_a <- tm_map(corpus_av1_a, stripWhitespace)
+
+# Building bag of words, managing sparsity threshold, converting to data frame, regularizing column names and adding dependent variable.
+
+dtm_av1_a <- DocumentTermMatrix(corpus_av1_a)
+sparse_av1_a <- removeSparseTerms(dtm_av1_a, 0.995)
+sentSparse_av1_a <- as.data.frame(as.matrix(sparse_av1_a)) 
+colnames(sentSparse_av1_a) <- make.names(colnames(sentSparse_av1_a))
+sentSparse_av1_a <- sentSparse_av1_a %>% 
+  mutate(sentiment = reviews_training$sentiment)
+
+# Training CART with the algorithm rpart with cp tuning.
+
+set.seed(1)
+fit_cart_tuned_av1_a <- train(sentiment ~ .,
+                              method = "rpart",
+                              data = sentSparse_av1_a,
+                              tuneLength = 15,
+                              metric = "Accuracy")
+fitted_cart_tuned_av1_a <- predict(fit_cart_tuned_av1_a)
+cm_cart_tuned_av1_a <- confusionMatrix(as.factor(fitted_cart_tuned_av1_a), 
+                      as.factor(sentSparse_av1_a$sentiment))
+
+# Table comprised of accuracy. 
+
+tab <- data.frame(cm_cart_tuned_av1_a$overall["Accuracy"]) %>%
+       `rownames<-`("Model: Neg Short Forms + CART + Tuning") %>%
+       `colnames<-`("Accuracy on the Training Set")
+
+# Layout
+
+knitr::kable(tab, "html", align = "c") %>% 
+       kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+       column_spec(1, bold = T, color = greenish_blue) %>%
+       column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(tab)
+```
+
+<br>
+
+There is accuracy improvement approximately from 78 % to 79 %. Consequently, negational unigrams such as "not" will be kept in the corpus. 
+
+For the record, does *not* show in the decision tree?
+
+<br>
+
+```{r Decision tree from tuned CART after adding negation such as not}
+
+palette <- c(super_light_gray, super_light_taupe)
+
+prp(fit_cart_tuned_av1_a$finalModel, uniform = TRUE, cex = 0.8, 
+    box.palette = palette, border.col = "white")
+```
+
+<br>
+
+Yes, indeed it does and rather predominantly!
+
+<br>
+
+## Negative Short Forms
+
+### Adding Negative Short Forms
+
+<br>
+
+First, negative short forms will no longer be removed from the corpus and will thus enter the bag of words. Impact on accuracy will be tested. 
+
+<br>
+
+```{r Negative short forms get in}
+
+# Building up new corpus.
+
+corpus_av1_b <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av1_b <- tm_map(corpus_av1_b, content_transformer(tolower))
+
+# Replacing all punctuation marks with white space characters, instead of just removing punctuation marks, to prevent tokens like "brokeni" from being generated. Keeping apostrophes to leave intact positive short forms such as "it's" so that they can be removed. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_b[[i]]$content <- gsub("(?!')[[:punct:]]", " ", 
+                                    corpus_av1_b[[i]]$content, perl = TRUE)
+}
+rm(i)
+
+# Removing only positive short forms after reducing to one the number of white space characters in a row in a row.
+
+corpus_av1_b <- tm_map(corpus_av1_b, stripWhitespace)
+corpus_av1_b <- tm_map(corpus_av1_b, removeWords, short_forms_pos)
+
+# Removing remaining apostrophes. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_b[[i]]$content <- gsub("[[:punct:]]", " ", 
+                                    corpus_av1_b[[i]]$content)
+}
+rm(i)
+
+# Removing stopwords_remaining, stemming, removing numbers, digits and multiple white space characters (leaving only one white space character at a time).
+
+corpus_av1_b <- tm_map(corpus_av1_b, removeWords, stopwords_remaining)
+corpus_av1_b <- tm_map(corpus_av1_b, stemDocument)
+corpus_av1_b <- tm_map(corpus_av1_b, removeNumbers)
+corpus_av1_b <- tm_map(corpus_av1_b, stripWhitespace)
+
+# Building bag of words, managing sparsity threshold, converting to data frame, regularizing column names and adding dependent variable.
+
+dtm_av1_b <- DocumentTermMatrix(corpus_av1_b)
+sparse_av1_b <- removeSparseTerms(dtm_av1_b, 0.995)
+sentSparse_av1_b <- as.data.frame(as.matrix(sparse_av1_b)) 
+colnames(sentSparse_av1_b) <- make.names(colnames(sentSparse_av1_b))
+sentSparse_av1_b <- sentSparse_av1_b %>% 
+  mutate(sentiment = reviews_training$sentiment)
+
+# Training CART with the algorithm rpart with cp tuning.
+
+set.seed(1)
+fit_cart_tuned_av1_b <- train(sentiment ~ .,
+                              method = "rpart",
+                              data = sentSparse_av1_b,
+                              tuneLength = 15,
+                              metric = "Accuracy")
+fitted_cart_tuned_av1_b <- predict(fit_cart_tuned_av1_b)
+cm_cart_tuned_av1_b <- confusionMatrix(as.factor(fitted_cart_tuned_av1_b), 
+                                       as.factor(sentSparse_av1_b$sentiment))
+
+# Table comprised of accuracy
+
+tab <- data.frame(cm_cart_tuned_av1_b$overall["Accuracy"]) %>%
+       `rownames<-`(
+          "Model: Negation + Neg Short Forms + CART + Tuning") %>%
+       `colnames<-`("Accuracy on the Training Set")
+
+# Layout
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(tab)
+```
+
+<br>
+
+Adding negative short forms such as "isn't" does not impact accuracy level. Consequently, another try will be done with negative short forms: instead of being added, negative short forms will be replaced with "not". 
+
+<br>
+
+### Replacing Negative Short Forms with " not "
+
+<br>
+
+Positive short forms will still be removed from the corpus with the function removeWords() from the package tm, which removes separate words and no substrings. 
+
+Negative short forms will be searched for with the function gsub(). To avoid picking up substrings as well, one white space character will be added in front of all negative short forms and at the end of each of them. Indeed, let's not forget that misspelled short forms such as "dont" have been deliberately introduced as well among negative short forms to take into account "alternative grammar", which is omnipresent in reviews. And words such as "dont" can be substrings out of other words. The gsub() function will replace the "escorted" short forms with " not ". 
+
+Let's have a look at the new accuracy level. 
+
+<br>
+
+```{r Replacing negative short forms with "not"}
+
+# Building up new corpus.
+
+corpus_av1_c <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av1_c <- tm_map(corpus_av1_c, content_transformer(tolower))
+
+# Replacing all punctuation marks with white space characters, instead of just removing punctuation marks, to prevent tokens like "brokeni" from being generated. Keeping apostrophes to leave intact short forms such as "it's" so that positive short forms can be removed. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_c[[i]]$content <- gsub("(?!')[[:punct:]]", " ", 
+                                    corpus_av1_c[[i]]$content, perl = TRUE)
+}
+rm(i)
+
+# Adding one white space character at the beginning and at the end of each negative short form in order to prepare to use the function gsub() without picking up substrings. 
+
+dummy <- paste("", short_forms_neg, "")
+
+# Replacing negative short forms with " not ".
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(short_forms_neg)) {
+    corpus_av1_c[[i]]$content <- gsub(dummy[j], " not ", 
+                                      corpus_av1_c[[i]]$content)
+  }
+}
+rm(dummy)
+
+# Removing only positive short forms after reducing to one the number of white space characters in a row in a row.
+
+corpus_av1_c <- tm_map(corpus_av1_c, stripWhitespace)
+corpus_av1_c <- tm_map(corpus_av1_c, removeWords, short_forms_pos)
+
+# Removing remaining apostrophes. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av1_c[[i]]$content <- gsub("[[:punct:]]", " ", 
+                                    corpus_av1_c[[i]]$content)
+}
+rm(i)
+
+# Removing stopwords_remaining, stemming, removing numbers, digits and multiple white space characters (leaving only one white space character at a time).
+
+corpus_av1_c <- tm_map(corpus_av1_c, removeWords, stopwords_remaining)
+corpus_av1_c <- tm_map(corpus_av1_c, stemDocument)
+corpus_av1_c <- tm_map(corpus_av1_c, removeNumbers)
+corpus_av1_c <- tm_map(corpus_av1_c, stripWhitespace)
+
+# Building bag of words, managing sparsity threshold, converting to data frame, regularizing column names and adding dependent variable.
+
+dtm_av1_c <- DocumentTermMatrix(corpus_av1_c)
+sparse_av1_c <- removeSparseTerms(dtm_av1_c, 0.995)
+sentSparse_av1_c <- as.data.frame(as.matrix(sparse_av1_c)) 
+colnames(sentSparse_av1_c) <- make.names(colnames(sentSparse_av1_c))
+sentSparse_av1_c <- sentSparse_av1_c %>% 
+  mutate(sentiment = reviews_training$sentiment)
+
+# Training CART with the algorithm rpart with cp tuning.
+
+set.seed(1)
+fit_cart_tuned_av1_c <- train(sentiment ~ .,
+                              method = "rpart",
+                              data = sentSparse_av1_c,
+                              tuneLength = 15,
+                              metric = "Accuracy")
+fitted_cart_tuned_av1_c <- predict(fit_cart_tuned_av1_c)
+cm_cart_tuned_av1_c <- confusionMatrix(as.factor(fitted_cart_tuned_av1_c), 
+                                       as.factor(sentSparse_av1_c$sentiment))
+
+# Table comprised of accuracy
+
+tab <- data.frame(cm_cart_tuned_av1_c$overall["Accuracy"]) %>%
+  `rownames<-`('Model: Negation + [Neg Short Forms = "not"] + CART + Tuning') %>%
+  `colnames<-`("Accuracy on the Training Set")
+
+# Layout
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = greenish_blue) %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(tab)
+```
+
+<br>
+
+Replacing negative short forms with " not " downgrades accuracy. This path will not be followed.  
+
+<br>
+
+## Polarization
+
+<br>
+
+In samples of false negatives and false positives, analysis has pinpointed unigrams and multigrams that convey subjective information. 
+
+In the line of these insights, these n-grams have been listed and classified as positive and negative. They have been inserted into four files and the files have been uploaded in the GitHub repository https://github.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited :
+
+- subj_pos_multigrams.csv,
+- subj_pos_unigrams.csv,
+- subj_neg_multigrams.csv,
+- subj_neg_unigrams.csv.
+
+Here are a few examples from each file of polarized n-grams.
+
+Positive sentiment oriented unigrams from subj_pos_unigrams.csv (stemmed):
+"super", "awesom", etc. 
+
+Some positive multigrams from the file sub_pos_multigrams.csv (not stemmed): "no trouble", "5 stars", "thumbs up", "it's a ten", "as described", "know what they're doing", "must have". Possible variants have usually been added, including variants originating from spelling errors or "alternative grammar": "no troubles", "not any trouble", "not any troubles", "no problem", "no problems", etc.; "five stars", "five star", "5-star", "5star", "5 star"; "it's a 10", "it's a ten", "its a 10", etc.; "know what theyre doing", "know what they are doing", etc. 
+
+Some negative unigrams (after stemming) from the file subj_neg_unigrams.csv: "horribl", "crap", "whine", etc.
+
+Some negative multigrams (not stemmed) from the file sub_neg_multigrams.csv: "1 star", "one star", "not good", "no good", "shouldn't" (often associated with negative context), "pretty piece of junk", etc.
+
+In the training reviews, instances of the positive n-grams will be replaced with " subjpo " and instances of negative n-grams with " subjneg ". 
+
+Efficacy-minded rules will be applied in this NLP process.
+
+First, the polarized n-grams will be preceded and followed by one white space character when looking for instances in reviews. Otherwise, in the bag of words, the n-gram "most inconvi" would become "most in subjpo " (because "convi" is a polarized unigram in subj_pos_unigrams.csv) and then "  subjpo " (because "most" and "in" are stopwords in stopwords_remaining.csv)! A negatively oriented multigram would become a positively oriented unigram! Consequently, one white space character is added in front of and at the end of each polarized n-gram before looking for matching instances in NLP-transformed reviews, in order to avoid replacing substrings.
+
+Second, as a consequence, a white space character has to be added at the beginning and at the end of each NLP-transformed review! Otherwise, polarized n-grams, which are preceded and followed by one white space character can never match an instance that is positioned at the beginning or at the end of a review. 
+
+Third, " subjpo " and " subjneg " contain one white space character at the beginning and at the end, in order to prevent amalgamation. Indeed, what would happen if white space characters were not added? Let's take our well known example of " conveni ": if it were replaced with just "subjpo" in the n-gram " most conveni ", then it would produce " mostsubjpo", which would no longer be a generic positive unigram! Transformation would be useless if not annoyingly counterproductive! 
+
+Fourth, multiple inter word white space characters have to be reduced to a single inter word white space character: indeed, listed multigrams only have one white space character between words and could never match multigrams from reviews with several white space characters between words.  
+
+Fifth, in training reviews, negative multigrams have got to be replaced before positive multigrams. Let's take the example of " not a good bargain ", which is a negatively polarized multigram from the file subj_neg_multigrams.csv: if matching with instances in reviews begins with positively polarized n-grams, then " not a good bargain " in a review becomes " not a subjpo ", which might be less clear in machine learning than " subjneg "! For similar reasons, positive multigrams are matched before negative unigrams and positive unigrams. 
+Sixth, negative or positive polarized multigrams should be tentatively matched in decreasing order in for loops. Why? Let's take the example of " no good bargain " in one review. In sub_neg_multigrams.csv, there are two negatively polarized multigrams: " no good bargain " and " no good "; if these are considered in decreasing order, then, in the review, " no good bargain " is replaced with " subjneg ", which looks appropriate; otherwise " no good bargain " is replaced with " subjneg bargain " and then " subjneg subjpo ": consequently, instead of having one negative generic unigram we would get one positive and one negative generic unigrams!
+
+NLP will be rerun again. In each training review, all n-grams that match positive n-grams from subj_pos_multigrams.csv or subj_pos_unigrams.csv will be replaced with a generic positive token (" subjpo "); all n-grams that match negative n-grams from subj_neg_multigrams.csv or subj_neg_unigrams.csv will be replaced with a generic negative token (" subjneg "). 
+
+The utf8 package will be used to normalize punctuation: there has been some trouble with curly apostrophes instead of straight apostrophes.
+
+<br>
+
+```{r Polarizing and rerunning CART}
+
+# Downloading positive multigrams.
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/subj_pos_multigrams.csv"
+
+# Creating a data frame.
+subj_pos_multigrams <- 
+  read.csv(myfile, header = FALSE, stringsAsFactors = FALSE) 
+
+# Excluding first column, which is an index, and keeping only positive multigrams under the form of a vector.
+subj_pos_multigrams <- 
+  sort(subj_pos_multigrams[, 2], decreasing = TRUE) %>%                                as.vector()
+
+# Converting curly apostrophes to straight apostrophes. 
+subj_pos_multigrams <- 
+  sapply(subj_pos_multigrams, utf8_normalize, map_quote = TRUE)
+
+# Making sure there is one single leading empty space character, one single trailing empty space character and one single inter-word empty space character between two words. The str_squish() function removes leading and trailing space and avoids repeated inter_word space; the function paste(), with pairs of quotes as arguments, adds one single leading empty space character and one single trailing empty space character.  
+subj_pos_multigrams <- 
+  paste("", str_squish(subj_pos_multigrams), "")
+
+# Same process for positive unigrams,except for UTF8 normalization, which is irrelevant since there is no apostrophe in positive unigrams. 
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/subj_pos_unigrams.csv"
+
+subj_pos_unigrams <- 
+  read.csv(myfile, header = FALSE, stringsAsFactors = FALSE)
+
+subj_pos_unigrams <- 
+  subj_pos_unigrams[, 2] %>% 
+  as.vector()
+
+subj_pos_unigrams <- 
+  paste("", str_trim(subj_pos_unigrams), "")
+
+# Same process for super positive unigrams as for positive unigrams
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/super_positive_unigrams.csv"
+
+super_positive_unigrams <- 
+  read.csv(myfile, header = FALSE, stringsAsFactors = FALSE)
+
+super_positive_unigrams <- 
+  super_positive_unigrams[, 2] %>% 
+  as.vector()
+
+super_positive_unigrams <- 
+  paste("", str_trim(super_positive_unigrams), "")
+
+# Same process for negative multigrams as for positive multigrams
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/subj_neg_multigrams.csv"
+
+subj_neg_multigrams <- 
+  read.csv(myfile, header = FALSE, stringsAsFactors = FALSE) 
+
+subj_neg_multigrams <- 
+  sort(subj_neg_multigrams[, 2], decreasing = TRUE) %>% 
+  as.vector()                          
+
+subj_neg_multigrams <- 
+  sapply(subj_neg_multigrams, utf8_normalize, map_quote = TRUE)
+
+subj_neg_multigrams <- 
+  paste("", str_squish(subj_neg_multigrams), "")
+
+# Same process for negative unigrams as for positive unigrams
+
+myfile <- "https://raw.githubusercontent.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/master/subj_neg_unigrams.csv"
+
+subj_neg_unigrams <- 
+  read.csv(myfile, header = FALSE, stringsAsFactors = FALSE) 
+
+subj_neg_unigrams <- 
+  subj_neg_unigrams[, 2] %>% 
+  as.vector()
+
+subj_neg_unigrams <- 
+  paste("", str_trim(subj_neg_unigrams), "")
+
+rm(myfile)
+
+# Creating and lowercasing corpus.
+
+corpus_av2 <- VCorpus(VectorSource(reviews_training$text)) 
+corpus_av2 <- tm_map(corpus_av2, content_transformer(tolower))
+
+# Replacing all punctuation marks by spaces except for apostrophes and hyphens. 
+for (i in 1:nrow(reviews_training)) {
+  corpus_av2[[i]]$content <- 
+    gsub("[.?!]", " ", gsub("(?![-.?!'])[[:punct:]]", " ", 
+                            corpus_av2[[i]]$content, perl=T))
+}
+
+# Removing spaces at the beginning and at the end of review to get apostrophes in first or last position if they are at the beginning or at the end of a review.
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av2[[i]]$content <- str_trim(corpus_av2[[i]]$content)
+}
+
+# Removing apostrophes and hyphens at the beginning and at the end of reviews, with repetition (in case there are several of them).
+
+for (i in 1:nrow(reviews_training)) {
+    corpus_av2[[i]]$content <- 
+      gsub("^[[:punct:]]+|[[:punct:]]+$","", corpus_av2[[i]]$content)
+}
+
+# Making sure there is one single leading empty space character, one single trailing empty space character and one single inter-word empty space character between two words. The str_squish() function removes leading and trailing space and avoids repeated inter_word space; the function paste(), with pairs of quotes as arguments, adds one single leading empty space character and one single trailing empty space character.
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av2[[i]]$content <- 
+    paste("", str_squish(corpus_av2[[i]]$content), "") 
+}
+
+# Matching multigrams from reviews with polarized multigrams from subj_neg_multigrams.csv or subj_pos_multigrams.csv. If matching works, replacing multigrams from reviews with generic polarized unigram " subjpo " or " subneg ".
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus_av2[[i]]$content <- 
+      gsub(subj_neg_multigrams[j], " subjneg ", corpus_av2[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+# Removing short forms.
+
+corpus_av2 <- tm_map(corpus_av2, removeWords, short_forms_neg)
+corpus_av2 <- tm_map(corpus_av2, removeWords, short_forms_pos)
+
+# Replacing all remaining apostrophes and non intraword hyphens with single empty space character. 
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av2[[i]]$content <- 
+    gsub("'|- | -| - ", " ", corpus_av2[[i]]$content)
+}
+
+# Polarizing multigrams again (some apostrophes or hyphens might have prevented taking some n-grams into account).
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_neg_multigrams[j], " subjneg ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+# Stemming reviews.
+
+corpus_av2 <- tm_map(corpus_av2, stemDocument)
+
+# The function stemDocument does not only stem but also suppresses spaces at the beginning and at the end of each review. Consequently, one space has to be added again at the beginning and at the end of each review.
+
+for (i in 1:nrow(reviews_training)) {
+  corpus_av2[[i]]$content <- paste("", corpus_av2[[i]]$content, "") 
+}
+
+# Polarizing multigrams again after stemming of reviews. Some multigrams might have become eligible after stemming of reviews. Not highly probable but not excluded.
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_neg_multigrams[j], " subjneg ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+# Matching polarized unigrams with unigrams in reviews and, if such is the case, replacing matching unigrams from reviews with a generic polarized unigram. 
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_neg_unigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_neg_unigrams[j], " subjneg ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_pos_unigrams)) {
+    corpus_av2[[i]]$content <- gsub(subj_pos_unigrams[j], " subjpo ", 
+                                    corpus_av2[[i]]$content)
+  }
+}
+
+# Flipping polarity of negation + " subjneg " or negation + " subjpo ".
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(negation)) {
+    corpus_av2[[i]]$content <- 
+      gsub(paste(negation[j], " subjneg ", collapse = ""), 
+           " subjpo ", corpus_av2[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(subj_pos_unigrams)) {
+    corpus_av2[[i]]$content <- 
+      gsub(paste(negation[j], " subjpo ", collapse = ""), 
+           " subjneg ", corpus_av2[[i]]$content)
+  }
+}
+
+# Also flipping polarity of super positive unigrams.
+
+for (i in 1:nrow(reviews_training)) {
+  for (j in 1:length(super_positive_unigrams)) {
+    for (k in 1:length(negation)) {
+      dummy <- paste(negation[k], super_positive_unigrams[j], 
+                     collapse = "")
+      dummy <- paste("", str_squish(dummy), "")
+      corpus_av2[[i]]$content <-  
+        gsub(dummy, " subjneg ", corpus_av2[[i]]$content)
+    }
+  }
+}
+
+# Removing remaining stopwords.
+
+corpus_av2 <- tm_map(corpus_av2, removeWords, stopwords_remaining)
+
+# Removing numbers, digits and extra white space characters.
+
+corpus_av2 <- tm_map(corpus_av2, removeNumbers)
+corpus_av2 <- tm_map(corpus_av2, stripWhitespace)
+
+# Creating document term matrix, handling sparsity, converting to data frame, making column names R-friendly and adding independent variable. 
+
+dtm_av2 <- DocumentTermMatrix(corpus_av2)
+
+sparse_av2 <- removeSparseTerms(dtm_av2, 0.995)
+
+sentSparse_av2 <- as.data.frame(as.matrix(sparse_av2)) 
+
+rownames(sentSparse_av2) <- 1:nrow(sentSparse_av2)
+
+colnames(sentSparse_av2) <- make.names(colnames(sentSparse_av2))
+
+sentSparse_av2 <- 
+  sentSparse_av2 %>% 
+  mutate(sentiment = reviews_training$sentiment)
+
+# Building a CART model with cp tuning.
+
+set.seed(1)
+fit_cart_tuned_av2 <- train(sentiment ~ .,
+                            method = "rpart",
+                            data = sentSparse_av2,
+                            tuneLength = 15, 
+                            metric = "Accuracy")
+
+fitted_cart_tuned_av2 <- predict(fit_cart_tuned_av2)
+cm_cart_tuned_av2 <- 
+  confusionMatrix(as.factor(fitted_cart_tuned_av2), 
+                  as.factor(sentSparse_av2$sentiment))
+
+# Printing accuracy level.
+
+tab <- data.frame(cm_cart_tuned_av2$overall["Accuracy"]) %>%
+       `rownames<-`(
+          'Model: Negation + Polarization + CART + Tuning') %>%
+       `colnames<-`("Accuracy on the Training Set")
+
+knitr::kable(tab, "html", align = "c") %>% 
+       kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+       column_spec(1, bold = T, color = greenish_blue) %>%
+       column_spec(2, bold = T, color = "white", background = greenish_blue)
+
+rm(tab)
+```
+
+<br>
+
+Polarizing n-grams that convey subjective information has dramatically boosted accuracy from approximately 78 % to 89 %. Nevertheless, let us stay realistic: text mining has been performed on the training set and is not necessarily, or at least not necessarily entirely, transposable to the validation set. 
+
+To get some visual representation of changes, let's have a look at a wordcloud from the new bag of words. 
+
+```{r Wordcloud from bag of words with negation and polarized n-grams}
+
+df <- sentSparse_av2 %>% select(-ncol(sentSparse_av2))
+
+df <- data.frame(word = colnames(df), 
+                 freq = colSums(df)) %>%
+  filter(freq >= 10) %>%
+  arrange(desc(freq)) %>%
+  head(., 40)
+
+# Second, let's create the wordcloud. Numerous colors are used to easily dissociate tokens.
+
+set.seed(1)
+wordcloud2(df, shape = 'square', color = 'random-dark',
+           backgroundColor = super_light_taupe, shuffle = FALSE)
+
+rm(df)
+```
+
+The whole picture has changed. The most frequent tokens are now "subjpo" and "subjneg". "not" is present, at the fifth level (graphically), just after *great*. 
+
+The following histogram adds some quantitative insight.
+
+<br>
+
+```{r Histogram from tuned CART after polarizing}
+
+df <- sentSparse_av2 %>% select(- ncol(.))
+
+freq <- data.frame(to = colnames(df), 
+                   fre = as.integer(colSums(df)), 
+                   stringsAsFactors = FALSE) %>% 
+        arrange(desc(fre)) %>% 
+        head(., 12)
+
+graph <-  freq %>% mutate(to = reorder(to, fre)) %>%
+  ggplot(aes(to, fre)) + 
+  geom_bar(stat = "identity", width = 0.80, 
+           color = "#007ba7", fill = "#007ba7") + 
+  coord_flip() +
+  ggtitle("Token Frequency") +
+  xlab("Token") + ylab("Frequency") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16, 
+                                  face = "bold"),
+        axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16), 
+        axis.text.x = element_text(angle = 45, hjust = 1, 
+                                   size = 12), 
+        axis.text.y = element_text(size = 12))
+
+# Making the graph interactive.
+ggplotly(graph, dynamicTicks = TRUE, 
+              width = 500, height = 500)
+
+rm(graph)
+```
+
+<br>
+
+Is there any parallel evolution in the decision tree?
+
+<br>
+
+```{r Decision tree from tuned CART after polarizing}
+
+palette <- c(super_light_gray, super_light_taupe)
+
+prp(fit_cart_tuned_av2$finalModel, uniform = TRUE, cex = 0.8, 
+    box.palette = palette, border.col = "white")
+```
+
+<br>
+
+Yes, indeed there is now more parallelism between wordcloud/histogram and decision tree! The most frequent tokens in the wordcloud are now at the top of the decision tree. Indeed, the first node is occupied by "subjneg"; then comes "subjpo" and at the same level "not" and "great". Many individual tokens that were previously in nodes of the tree, have disappeared.
+
+The next table summarizes accuracy results obtained so far. 
+
+<br>
+
+```{r Result table}
+
+colname <- c("MODEL ID", "SHORT DESCRIPTION", 
+             "ACCURACY", "SENSITIVITY", "NEG PRED VAL", 
+             "SPECIFICITY", "POS PRED VAL")
+
+models <- c("cart_tuned_av1_a", "cart_tuned_av1_b", 
+            "cart_tuned_av1_c", "cart_tuned_av2")
+
+description <- c("CART + tuning + negation",
+                 "CART + tuning + negation + neg short forms",
+                 'CART + tuning + negation + neg short forms = "not"',
+                 "CART + tuning + negation + polarization")
+
+cm <- c("cm_cart_tuned_av1_a", "cm_cart_tuned_av1_b", 
+        "cm_cart_tuned_av1_c", "cm_cart_tuned_av2")
+
+tab <- data.frame(matrix(1:(length(colname) * length(models)),
+                         ncol = length(colname), 
+                         nrow = length(models)) * 1)
+
+for (i in 1:length(models)) {
+  tab[i, 1] <- models[i]
+  tab[i, 2] <- description[i]
+  tab[i, 3] <- 
+    eval(parse(text = 
+      paste(cm[i], "$overall['Accuracy']", sep = "")))
+  tab[i, 4] <- 
+    eval(parse(text = 
+      paste(cm[i], "$byClass['Sensitivity']", sep = "")))
+  tab[i, 5] <- 
+    eval(parse(text = 
+      paste(cm[i], "$byClass['Neg Pred Value']", sep = "")))
+  tab[i, 6] <- 
+    eval(parse(text = 
+      paste(cm[i], "$byClass['Specificity']", sep = "")))
+  tab[i, 7] <- 
+    eval(parse(text = 
+      paste(cm[i], "$byClass['Pos Pred Value']", sep = "")))
+}
+
+tab_av_1_2 <- tab %>% mutate_at(vars(3:7), funs(round(., 4))) %>%
+           `colnames<-`(colname)
+
+# Recalling previous table and making sure the colnames are regularized. 
+tab <- tab_av0 %>% `colnames<-`(colname)
+
+# Printing.
+
+tab_av_0_1_2 <- rbind(tab, tab_av_1_2)
+
+knitr::kable(tab_av_0_1_2, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(c(1, 5:6),  bold = T, strikeout = T, 
+           color = "white", background = harvard_crimson) %>%
+  row_spec(2:4, bold = T, color = "white", background = harvard_crimson) %>%
+  row_spec(7, bold = T, color = "white", background = greenish_blue)
+
+rm(models, description, cm, tab)
+rm(tab_av0, tab_av_1_2)
+```
+
+<br>
+
+In the table above, on rows 1, 3 and 4, fonts have been stricken through to indicate that these models have been discarded. The other two models should be seen as a cumulative process bringing accuracy improvement in a stepwise and incremental way. 
+
+As shown in the last two rows, thanks to polarization, accuracy has jumped approximately from  81 % up to 92 %, which is impressive. 
+
+More impressive: sensitivity has sprung from 66 % to 89 %. This is linked to false negative management. False negatives have been a recurrent weak point in machine learning results up to now. But special attention has been paid to them in debriefing previous machine learning results and in perusing random samples of false negatives and false positives. 
+
+Let's have a look at the numbers of remaining false negatives and positives in the following confusion matrix.
+
+<br>
+
+```{r Confusion table from tuned CART after polarizing}
+
+tab <- 
+  table(fitted_cart_tuned_av2, sentSparse_av2$sentiment) %>% 
+  as.vector()
+
+tab <- 
+  data.frame(matrix(tab, ncol = 2, nrow = 2, byrow = FALSE)) %>%
+  `colnames<-`(c("Actually positive", "Actually negative")) %>%
+  `rownames<-`(c("Predicted positive AFTER POLARIZING", 
+                 "Predicted negative AFTER POLARIZING"))
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  column_spec(1, bold = T, color = "black") %>%
+  column_spec(2, bold = T, color = "white", background = greenish_blue) %>%
+  column_spec(3, bold = T, color = "white", background = harvard_crimson) 
+
+# sentSparse_av2 will be preserved for further use in the part about machine learning.
+
+rm(reviews_training)
+rm(corpus_av1_a, dtm_av1_a, sparse_av1_a)
+rm(fit_cart_tuned_av1_a, fitted_cart_tuned_av1_a, cm_cart_tuned_av1_a)
+rm(corpus_av1_b, dtm_av1_b, sparse_av1_b, sentSparse_av1_b)
+rm(fit_cart_tuned_av1_b, fitted_cart_tuned_av1_b, cm_cart_tuned_av1_b)
+rm(corpus_av1_c, dtm_av1_c, sparse_av1_c, sentSparse_av1_c)
+rm(fit_cart_tuned_av1_c, fitted_cart_tuned_av1_c, cm_cart_tuned_av1_c)
+rm(corpus_av2, dtm_av2, sparse_av2)
+rm(fit_cart_tuned_av2, fitted_cart_tuned_av2, cm_cart_tuned_av2)
+rm(df, freq, i, j, colname, tab, tab_av_0_1_2)
+```
+
+<br>
+
+With respect to the last accepted model, the number of false negatives has been crushed from 114 to 38; parallelwise, the number of true negatives has climbed from 220 to 296. There is also a decrease in false positives, much more modest though, from 22 to 17. 
+
+After improving accuracy thanks to NLP and text mining, new accuracy improvements will be looked for in the next section through machine learning optimization.
+
+<br>
+
+# Machine Learning
+
+<br>
+
+Ten models are going to be applied.
+
+<br>
+
+## 10 Machine Learning Models
+
+<br>
+
+Ten machine learning models have been chosen. Here is the list, with an identifier and a short description for each model. 
+
+<br>
+
+```{r Identification and description of the 2 machine learning models}
+
+# Signage of the two models, i.e. CART and GBM
+
+IDs <- c("cart_15", "xgbLinear_5")
+
+models <- c("CART", "eXtreme Gradient Boosting")
+
+caret_names <- c("rpart", "xgbLinear")
+
+tunings <- c(15, 5)
+
+nr_resamples <- rep(25, 2)
+
+# Colnames of the model presentation table of models signage
+
+colname_methods <- c("MODEL ID", "MODEL", "NAME IN CARET", 
+                    "# TUNING VALUES", "# BOOTSTRAPPED RESAMPLES")
+
+# Presentation table of models signage
+
+tab <- 
+  data.frame(IDs, models, caret_names, tunings, nr_resamples) %>%
+  `colnames<-`(colname_methods)
+
+# Layout
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1:2,  bold = T, 
+           color = "white", background = greenish_blue)  
+
+rm(tab)
+```
+
+<br> 
+
+All models will be trained with the train() function from the package caret. 
+
+For four models, by default, training has been done on 25 bootstrapped resamples and on 3 values of the parameters tuned. These models are "adaboost_03", "rf_03", "xgb_03" and "monmlp_03". For three models that run faster on my PC, two options have been applied: either default training ("cart_03", "svm_03" and "gbm_03) or training with tuning on 15 values across parameters tuned ("cart_15", "svm_15" and "gbm_15").
+
+The names of the parameters tuned by the train() function are available in  http://topepo.github.io/caret/available-models.html.
+
+<br>
+
+## Accuracy Results on the Training Set
+
+<br>
+
+The accuracy results are summarized in the next table. 
+
+<br>
+
+```{r Training 2 machine learning models}
+
+# Reinstating existing and saved training set sentSparse_av2.
+train <- sentSparse_av2
+
+# Temporarily discarding labels (dependent variable with sentiment polarity). 
+df <- train[, 1:(ncol(train) - 1)]
+
+# Any combination of a token (column) and a training review (row) from the data frame "train" is a real number at least equal to zero. This number indicates the occurrences frequency of the token in the training review. But, in a first step, we are only interested in discarding with no or little variation. And we'll do it in this way.
+
+# All numbers greater than zero will be set equal to 1.
+df[df > 0] <- 1
+
+# Columns will be summed up to indicate in how many training reviews a token is present (once, or twice, thrice ... it doesn't matter).
+v <- colSums(df)
+
+# Only columns summing up to more than 6 will be kept.  
+l <- which(v > 0)
+
+# Adding the number of the last column of train, i.e. the dependent variable with sentiment polarity. 
+l <- append(l, ncol(train))
+
+# Discarding low variation columns from the data frame "train".
+train <- train[ , l] %>% 
+  as.data.frame()
+
+# Running models. 
+
+fits <- list(1)
+
+set.seed(1)
+fits[[1]] <- train(sentiment ~ ., 
+                   method = caret_names[1],
+                   data = train, 
+                   tuneLength = 15,
+                   metric = "Accuracy")
+
+set.seed(1)
+fits[[2]] <- train(sentiment ~ ., 
+                   method = caret_names[2], 
+                   data = train, 
+                   tuneLength = 5,
+                   metric = "Accuracy")
+
+# Naming result bulk.
+names(fits) <- IDs
+
+# Getting predictions on training set.
+
+df <- data.frame(matrix(1:(nrow(train) * length(fits)), 
+                        ncol = length(fits), nrow = nrow(train)) * 1)
+
+for (i in 1:length(fits)) {
+  df[, i] <- predict(fits[[i]])
+}
+
+# Using predictions on the training set to compute accuracy for each model.
+
+tab <- data.frame(matrix(1:(length(fits)), 
+                         ncol = 1, nrow = length(fits)))
+
+for (i in 1:length(fits)) {
+  tab[i, 1] <- mean(df[, i] == train$sentiment)
+}                    
+
+# Preparing column names for result table.
+
+colname_results <- c("MODEL ID", "MODEL", "# TUNING VALUES", 
+                     "# BOOTSTRAPPED RESAMPLES", 
+                     "ACCURACY ON THE TRAINING SET")
+
+# Building up result table. 
+
+tab <- tab %>% 
+  `colnames<-`("acc") %>%
+  mutate(acc = round(acc, 4)) %>%
+  mutate(ID = IDs) %>% 
+  mutate(mod = models) %>%
+  mutate(tuning = tunings) %>%
+  mutate(boot = nr_resamples) %>%
+  select(ID, mod, tuning, boot, acc) %>% 
+  arrange(desc(acc)) %>%
+  `colnames<-`(colname_results)
+
+# Layout and print
+
+knitr::kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1:length(fits), bold = T, 
+           color = "#08457E", background = "#9bc4e2")
+```
+
+<br>
+
+Not surprisingly, most models seem to overfit. As pointed out in literature, it is a rather widespread tendency, especially so with complex algorithms which have many parameters they can minimize the loss function on. 
+
+Consequently, the ranking figuring in the table above is no appropriate tool to separate models. 
+
+Accuracy cannot be tested on the validation set since the validation set is only to be used at the last step; if some testing is performed on the validation set, it is no longer a validation set. 
+
+Moreover, the whole sample being very limited (1,000 reviews), it might have been counter-productive to divide it into training, test and validation sets instead of training and validation as has been done.
+
+<br>
+
+
+# Results on the Validation Set
+
+## Constructing the Validation Set
+
+<br>
+
+In order to predict on the validation set, the training set and the validation set have to contain the same columns, i.e. the same labels (dependent variable) and the same predictors. For labels, there is no problem. Let's see about predictors. 
+
+The training set already exists, it is sentSparse_av2, which has been built up through NLP and with text mining insights (negational unigrams integrated and generic tokens replacing sentiment polarized tokens). The training set cannot be changed to match the validation set since this would imply, in one way or another, retrieving some information from the validation and instilling it into the training set, which is contrary with the very status of a validation set.
+
+The validation set will be constructed in the same way as the training set, but independently: NLP, negational unigrams and polarization. Columns from the validation set will be aligned on the training set, of course not in content but in headers, in column names (i.e. in tokens). Columns that are in the validation set but not in the training set will be removed. Columns that are in the training set but not in the validation set will be added as null vectors to the validation set. 
+
+<br>
+
+```{r Validation set for machine learning}
+
+# Training set already exists, it is denominated "train". 2 models have already been adjusted on "train": "CART" (with the "rpart" algorithm and "GBM"). Validation set, or validation bag of words, has to be created by applying the index "ind_val" to the data frame "reviews". 
+
+reviews_val <- reviews[ind_val, ]
+
+# Creating and lowercasing corpus.
+
+corpus <- VCorpus(VectorSource(reviews_val$text)) 
+corpus <- tm_map(corpus, content_transformer(tolower))
+
+# Replacing all punctuation marks by empty space characters except for apostrophes and hyphens. 
+
+for (i in 1:nrow(reviews_val)) {
+  corpus[[i]]$content <- 
+    gsub("[.?!]", " ", gsub("(?![-.?!'])[[:punct:]]", " ", 
+                            corpus[[i]]$content, perl=T))
+}
+
+# Removing spaces at the beginning and at the end of review to get apostrophes in first or last position if they are at the beginning or at the end of a review.
+
+for (i in 1:nrow(reviews_val)) {
+  corpus[[i]]$content <- str_trim(corpus[[i]]$content)
+}
+
+# Removing apostrophes and hyphens at the beginning and at the end of reviews_val, with repetition (in case there are several of them).
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:12) {
+    corpus[[i]]$content <- 
+      gsub("^[[:punct:]]+|[[:punct:]]+$","", corpus[[i]]$content)
+  }
+}
+
+# Making sure there is one single leading empty space character, one single trailing empty space character and one single inter-word empty space character between two words. The str_squish() function removes leading and trailing space and avoids repeated inter_word space; the function paste(), with pairs of quotes as arguments, adds one single leading empty space character and one single trailing empty space character. 
+
+for (i in 1:nrow(reviews_val)) {
+  corpus[[i]]$content <- 
+    paste("", str_squish(corpus[[i]]$content), "") 
+}
+
+# Polarizing review multigrams by substitution.
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_neg_multigrams[j], " subjneg ", 
+                                corpus[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                corpus[[i]]$content)
+  }
+}
+
+# Removing short forms.
+
+corpus <- tm_map(corpus, removeWords, short_forms_neg)
+corpus <- tm_map(corpus, removeWords, short_forms_pos)
+
+# Replacing all remaining apostrophes and non intraword hyphens with single empty space character. 
+
+for (i in 1:nrow(reviews_val)) {
+  corpus[[i]]$content <- gsub("'|- | -| - ", " ", corpus[[i]]$content)
+}
+
+# Polarizing multigrams again: some apostrophes and some hyphens might have prevented polarizing some strings.
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_neg_multigrams[j], " subjneg ", 
+                                corpus[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                corpus[[i]]$content)
+  }
+}
+
+# Stemming reviews_val.
+corpus <- tm_map(corpus, stemDocument)
+
+# The function stemDocument() suppresses spaces at the beginning 
+# and at the end of each review. Consequently, one space has to be added again
+# at the beginning and at the end of each review.
+
+for (i in 1:nrow(reviews_val)) {
+  corpus[[i]]$content <- paste("", corpus[[i]]$content, "") 
+}
+
+# Polarizing multigrams again after stemming. Some multigrams might have 
+# become eligible after stemming. 
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_neg_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_neg_multigrams[j], " subjneg ", 
+                                corpus[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_pos_multigrams)) {
+    corpus[[i]]$content <- gsub(subj_pos_multigrams[j], " subjpo ", 
+                                corpus[[i]]$content)
+  }
+}
+
+# Polarizing unigrams by substitution.
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_neg_unigrams)) {
+    corpus[[i]]$content <- gsub(subj_neg_unigrams[j], " subjneg ", 
+                                corpus[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_pos_unigrams)) {
+    corpus[[i]]$content <- gsub(subj_pos_unigrams[j], " subjpo ", 
+                                corpus[[i]]$content)
+  }
+}
+
+# Flipping polarity of negation + " subjneg " or negation + " subjpo ".
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(negation)) {
+    corpus[[i]]$content <- 
+      gsub(paste(negation[j], " subjneg ", collapse = ""), 
+           " subjpo ", corpus[[i]]$content)
+  }
+}
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(subj_pos_unigrams)) {
+    corpus[[i]]$content <- 
+      gsub(paste(negation[j], " subjpo ", collapse = ""), 
+           " subjneg ", corpus[[i]]$content)
+  }
+}
+
+# Also flipping polarity of super positive unigrams.
+
+for (i in 1:nrow(reviews_val)) {
+  for (j in 1:length(super_positive_unigrams)) {
+    for (k in 1:length(negation)) {
+      dummy <- paste(negation[k], super_positive_unigrams[j], 
+                     collapse = "")
+      dummy <- paste("", str_squish(dummy), "")
+      corpus[[i]]$content <-  
+        gsub(dummy, " subjneg ", corpus[[i]]$content)
+    }
+  }
+}
+
+# Removing stopwords, numbers, digits and extra (repeated) empty space characters.
+
+corpus <- tm_map(corpus, removeWords, stopwords_remaining)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, stripWhitespace)
+
+# Creating Document Term Matrix.
+dtm <- DocumentTermMatrix(corpus)
+
+# No sparsity threshold is applied, since this could discard tokens present in the separately built training set. Converting to data frame, making colnames R-friendly and adding dependent variable. 
+
+sentSparse <- as.data.frame(as.matrix(dtm)) 
+
+colnames(sentSparse) <- make.names(colnames(sentSparse))
+
+sentSparse <- sentSparse %>% 
+  mutate(sentiment = reviews_val$sentiment) %>% 
+  as.data.frame()
+
+val <- sentSparse
+
+# For machine learning, columns have to match between training set and test set: adjustments have to be made on the validation set. Let's keep only columns that alo exist in the training set. The column "sentiment" will remain since the name exists in both sets.
+
+val <- val %>% 
+  as.data.frame() %>% 
+  select(intersect(colnames(.), colnames(train)))
+
+# Columns from "train" that are missing in "val" have to be added as null vectors.
+
+mis <- setdiff(colnames(train), colnames(val))
+
+df <- data.frame(matrix((nrow(val) * length(mis)), 
+                        nrow = nrow(val), 
+                        ncol = length(mis)) * 0) %>%
+      `colnames<-`(mis)
+
+val <- cbind(val, df) %>% 
+  as.data.frame()
+
+rm(subj_neg_multigrams, subj_neg_unigrams, 
+   subj_pos_multigrams, subj_pos_unigrams)
+rm(corpus, dtm, sentSparse)
+rm(i, j)
+```
+
+## Predicting on the Validation Set
+
+<br>
+
+The xgb_03 model can now be validated on the validation set: predictions will be computed on the validation set and then accuracy. 
+
+<br>
+
+```{r Validation}
+
+# Predictions on the validation set with xgb (and CART for further use)
+
+pred_xgbLinear_5 <- predict(fits$xgbLinear_5, newdata = val)
+pred_cart_15 <- predict(fits$cart_15, newdata = val)
+
+# Accuracy on the validation set with xgb (and CART)
+
+acc_xgbLinear_5 <- round(mean(pred_xgbLinear_5 == val$sentiment), 4)
+acc_cart_15 <- round(mean(pred_cart_15 == val$sentiment), 4)
+
+# Accuracy on the validation set with baseline model
+
+ref <- as.character(val$sentiment)
+
+pred_baseline <- data.frame(sentiment = rep(" Pos", nrow(val)),
+                            stringsAsFactors = FALSE)
+
+acc_baseline <- sprintf("%.4f", 
+                round(mean(pred_baseline$sentiment == val$sentiment), 4)) 
+
+# Printing accuracy on the validation set with baseline model and xgb.
+
+tab <- data.frame(matrix(c(acc_baseline, acc_cart_15, acc_xgbLinear_5), 
+                         nrow = 3, ncol = 1)) %>%
+  `colnames<-`("ACCURACY ON THE VALIDATION SET") %>% 
+  `rownames<-`(c("Baseline Model", 
+                 "CART",
+                 "Final Model: NLP + Text Mining + XGBoost + Default Tuning"))
+
+# Layout and print
+
+kable(tab, "html", align = "c") %>% 
+  kable_styling(bootstrap_options = "bordered", 
+                full_width = F, font_size = 16) %>%
+  row_spec(1, bold = T, color = "white", 
+           background = harvard_crimson) %>%
+  row_spec(2, bold = T, color = greenish_blue, 
+           background = super_light_taupe) %>%
+  row_spec(3, bold = T, color = "white", 
+           background = greenish_blue)
+
+rm(fits)
+rm(pred_xgbLinear_5, pred_baseline, pred_cart_15, ref, tab)
+```
+
+<br>
+
+On the validation set, xgb_03 provides an accuracy level of 88 %, which is substantially higher than the 50 % accuracy level from a baseline model.
+
+<br>
+
+## Attributing Accuracy Improvement per Methodological Layer
+
+<br>
+
+On the validation set, the baseline delivers an accuracy level of 50 % (just as on the training set). On the validation set again, the final model provides accuracy of 88 %, which is substantially higher. 
+
+Where does the improvement come from? From which step in the whole process: NLP, text mining or machine learning optimization? Splitting contribution to results needs to be done on the validation set since results on the training set can be boosted by overfitting. To evaluate input from each layer, a simple approach will we followed.
+
+On the validation set without polarization and without negation, prediction will be conducted and accuracy produced. The method will be cart_15, i.e. CART with 15-value tuning and 25 bootstrapped resamples: this model is rather fast and can be considered as a yardstick, having proved resilient although not optimal. This will help evaluate the impact of NLP. 
+
+Then, on the validation set with negation, a second evaluation will be conducted with cart_15: this will help evaluate the impact of integrating negation. 
+
+On the validation set with negation and polarization, a third evaluation will be conducted with cart_15: this will help evaluate the impact of polarization. 
+
+The accuracy difference between this last result and the result from eXtreme Gradient Boosting will measure the impact of machine learning optimization. 
+
+<br>
+
+**88 % prediction accuracy** has been reached on the validation set, against 50 % with a baseline model. Which factors have contributed towards that improvement with 38 percentage points?
+
+**Natural Language Processing** has contributed 21.7 percentage points.
+
+**Text mining** has brought additional accuracy improvement with 12.7 percentage points. 
+
+**Machine learning optimization** has boosted accuracy with 3.6 additional percentage points. 
+
+<br>
+
+# Summary & Conclusion
+
+<br>
+
+In this sentiment analysis project, a three-tier approach has lifted accuracy out of a baseline 50 % to 88 %: NLP (22 %), text mining (13 %) and machine learning optimization (4 %). 
+
+The Executive Summary, at the very beginning of this document, provides a nice overview. A dynamic table of content allows easy access to more detailed information. 
+
+In particular, the main insights from text mining can be found in "VI. INFORMATION RETRIEVAL USING INSIGHTS, C. Polarization - Text Classification - Text Substitution". Instead of using existing dictionaries, customized lists of polarized tokens have been established from perusing unused subjective information available in false negatives and false positives. In reviews, instances matching these polarized tokens have been replaced by a generic token either positive or negative, boosting use of subjective information. 
+
+This method has showed rather resilient. With insights limited to the training set, it has brought 10 % accuracy improvement on the validation set, i.e. almost as much as the 11 % accuracy increase on the training set. 
+
+Machine learning optimization has been conducted across ten models. eXtreme Gradient Boosting has emerged as the most performing model in this project and has boosted accuracy with 4 additional percentage points. Testing has been performed on bootstrapped accuracy distributions. 
+
+
+Dear Readers,
+
+Thank you for reaching the end. Please don't hesitate to get in touch with me through my GitHub email address. I am interested in all kinds of comments. 
+
+<br>
+
+# References
+
+<br>
+
+Availability has been checked up on March 30, 2020.
+
+<br>
+
+## Sentiment Analysis
+
+<br>
+
+https://www.edx.org/course/the-analytics-edge 
+
+https://www.tidytextmining.com/sentiment.html 
+
+https://medium.com/@annabiancajones/sentiment-analysis-of-reviews-text-pre-processing-6359343784fb
+
+https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
+
+https://monkeylearn.com/sentiment-analysis/
+
+https://towardsdatascience.com/basic-binary-sentiment-analysis-using-nltk-c94ba17ae386
+
+https://medium.com/@datamonsters/sentiment-analysis-tools-overview-part-1-positive-and-negative-words-databases-ae35431a470c
+
+<br>
+
+## Text Mining
+
+<br>
+
+https://www.tidytextmining.com/tidytext.html
+
+https://monkeylearn.com/text-mining/
+
+<br>
+
+## About Resample Distribution of Accuracy
+
+<br>
+
+https://books.google.be/books?id=GgmqDwAAQBAJ&pg=PA80&lpg=PA80&dq#v=onepage&q&f=false
+
+https://www.edx.org/course/data-science-machine-learning
+
+<br>
+
+## Something Simple about Overfitting
+
+<br>
+
+https://www.r-bloggers.com/machine-learning-explained-overfitting/
+
+<br>
+
+## "Pimp your RMD!"
+
+<br>
+
+https://holtzy.github.io/Pimp-my-rmd/
+
+https://rstudio.github.io/DT/
+
+https://rstudio.github.io/DT/options
+
+https://rstudio.github.io/DT/010-style.html
+
+https://stackoverflow.com/questions/45542144/how-to-give-color-to-a-given-interval-of-rows-of-a-dt-table
+
+https://stackoverflow.com/questions/46853567/centering-plotly-output-to-html
+
+https://bookdown.org/yihui/rmarkdown-cookbook/chunk-styling.html
+
+<br>
+
+# R Session Infor
+
+<br>
+
+```{r Session info}
+sessionInfo()
+```
+
+<br>
+<center> \* </center>
+<center> \* &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \* </center>
+<br>
+<br>
