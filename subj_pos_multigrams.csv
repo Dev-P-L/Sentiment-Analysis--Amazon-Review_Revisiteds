@@ -29,206 +29,215 @@
 29,wind resistant
 30,will order 
 31,will not regret
-32,understanding
-33,two thumbs up
-34,Two thumbs up
+32,useful
+33,understanding
+34,two thumbs up
 35,total packages
 36,total package
 37,thumbs up
-38,Thumbs up
-39,thumb up
-40,Thumb up
-41,This works
-42,this works
-43,This work
-44,this work
-45,This one works
-46,this one works
-47,This one work
-48,this one work
-49,so small
-50,shouldve invented it sooner
-51,should’ve invented it sooner
-52,should ve invented it sooner
-53,satisfied
-54,recommended
-55,recommendation
-56,recommend
-57,real unveiling
-58,real revelation
-59,real reveal
-60,real find
-61,real disclosure
-62,real breakthrough
-63,real break
-64,real bargain
-65,planning to order 
-66,plan to order
-67,plan on ordering 
-68,patient
-69,on time
-70,not one trouble
-71,not one scratch
-72,not one problem
-73,not even troubles
-74,not even scratches
-75,not even problems
-76,not even one trouble
-77,not even one scratch
-78,not even one problem
-79,not even a trouble
-80,not even a scratch
-81,not even a problem
-82,not a trouble
-83,not a scratch
-84,not a problem
-85,no troubles
-86,no trouble
-87,no shifting
-88,no scratches
-89,no scratch
-90,no problems
-91,no problem
-92,no peeling
-93,no bubbling
-94,must have
-95,major unveiling 
-96,major revelation
-97,major reveal
-98,major find
-99,major discovery
-100,major disclosure
-101,major breakthrough
-102,major break
-103,major bargain
-104,lots of compliments
-105,lots of compliment
-106,lot of compliments
-107,lot of compliment
-108,long range
-109,long battery-life
-110,long battery life
-111,less expensive
-112,job done
-113,It works
-114,it works
-115,is even better
-116,is even able 
-117,is a ten
-118,is a 10 
-119,helpful
-120,have everything
-121,have all the features
-122,have all features
-123,has everything
-124,has all the features
-125,has all features
-126,good revelation
-127,good reveal
-128,good find
-129,good discovery
-130,good disclosure
-131,good breakthrough
-132,good break 
-133,good bargain
-134,gonna order
-135,going to order
-136,functional
-137,four stars
-138,four star
-139,for the price
-140,fixes
-141,fix
-142,five stars
-143,five star
-144,everything you need
-145,everything that is needed
-146,everything one needs
-147,everything needed
-148,everything I need
-149,does work
-150,does everything
-151,do everything
-152,couldnt have been better
-153,couldnt have been any better
-154,couldnt be more happier
-155,couldnt be happier
-156,couldnt be better
-157,couldnt be any better
-158,couldnt ask for more
-159,couldn’t have been better
-160,couldn’t be more happier
-161,couldn’t be happier
-162,couldn’t be better
-163,couldn’t be any better
-164,couldn’t ask for more
-165,couldn t be more happier
-166,couldn t be happier
-167,couldn t be better
-168,couldn t be any better
-169,couldn t ask for more
-170,compliments
-171,compliment
-172,clear Skype calls
-173,clear skype calls
-174,clear calls
-175,cheaper
-176,cant beat
-177,can’t beat
-178,can t beat
-179,can even
-180,big unveiling
-181,big revelation
-182,big reveal
-183,big find 
-184,big discovery
-185,big disclosure
-186,big breakthrough
-187,big break
-188,big bargain
-189,be even better
-190,Battery charge-life is quite long 
-191,battery charge-life is quite long
-192,
-193,are even better
-194,
-195,are even able
-196,any troubles
-197,any trouble
-198,any scratches
-199,any scratch
-200,any problems
-201,any problem
-202,amazing unveiling
-203,amazing revelation
-204,amazing reveal
-205,amazing discovery
-206,amazing disclosure
-207,amazing breakthrough
-208,amazing break
-209,amazing bargain
-210,amazement
-211,amazed
-212,a winner
-213,a ten
-214,a bargain
-215,a 10
-216,5stars
-217,5star
-218,5-stars
-219,5-star
-220,5 stars
-221,5 star
-222,4stars
-223,4star
-224,4-stars
-225,4-star
-226,4 stars
-227,4 star
-228,2thumbs up
-229,2thumb up
-230,2-thumbs up
-231,2-thumb up
+38,thumb up
+39,this works
+40,this work
+41,this one works
+42,this one work
+43,so small
+44,shouldve invented it sooner
+45,should’ve invented it sooner
+46,should ve invented it sooner
+47,satisfied
+48,recommended
+49,recommendation
+50,recommend
+51,real unveiling
+52,real revelation
+53,real reveal
+54,real find
+55,real disclosure
+56,real breakthrough
+57,real break
+58,real bargain
+59,planning to order 
+60,plan to order
+61,plan on ordering 
+62,patient
+63,on time
+64,not one trouble
+65,not one scratch
+66,not one problem
+67,not even troubles
+68,not even scratches
+69,not even problems
+70,not even one trouble
+71,not even one scratch
+72,not even one problem
+73,not even a trouble
+74,not even a scratch
+75,not even a problem
+76,not a trouble
+77,not a scratch
+78,not a problem
+79,no troubles
+80,no trouble
+81,no shifting
+82,no scratches
+83,no scratch
+84,no problems
+85,no problem
+86,no peeling
+87,no bubbling
+88,must have
+89,major unveiling 
+90,major revelation
+91,major reveal
+92,major find
+93,major discovery
+94,major disclosure
+95,major breakthrough
+96,major break
+97,major bargain
+98,lots of compliments
+99,lots of compliment
+100,lot of compliments
+101,lot of compliment
+102,long range
+103,long battery-life
+104,long battery life
+105,less expensive
+106,job done
+107,it works
+108,is even better
+109,is even able 
+110,is a ten
+111,is a 10 
+112,helpful
+113,have everything
+114,have all the features
+115,have all features
+116,has everything
+117,has all the features
+118,has all features
+119,good revelation
+120,good reveal
+121,good find
+122,good discovery
+123,good disclosure
+124,good breakthrough
+125,good break 
+126,good bargain
+127,gonna order
+128,going to order
+129,functional
+130,four stars
+131,four star
+132,for the price
+133,fixes
+134,fix
+135,five stars
+136,five star
+137,everything you need
+138,everything that is needed
+139,everything one needs
+140,everything needed
+141,everything I need
+142,does work
+143,does everything
+144,do everything
+145,couldnt have been better
+146,couldnt have been any better
+147,couldnt be more happier
+148,couldnt be happier
+149,couldnt be better
+150,couldnt be any better
+151,couldnt ask for more
+152,couldn’t have been better
+153,couldn’t be more happier
+154,couldn’t be happier
+155,couldn’t be better
+156,couldn’t be any better
+157,couldn’t ask for more
+158,couldn t be more happier
+159,couldn t be happier
+160,couldn t be better
+161,couldn t be any better
+162,couldn t ask for more
+163,compliments
+164,compliment
+165,clear skype calls
+166,clear calls
+167,cheaper
+168,cant beat
+169,can’t beat
+170,can t beat
+171,can even
+172,big unveiling
+173,big revelation
+174,big reveal
+175,big find 
+176,big discovery
+177,big disclosure
+178,big breakthrough
+179,big break
+180,big bargain
+181,be even better
+182,battery charge-life is quite long
+183,are even better
+184,are even able
+185,any troubles
+186,any trouble
+187,any scratches
+188,any scratch
+189,any problems
+190,any problem
+191,amazing unveiling
+192,amazing revelation
+193,amazing reveal
+194,amazing discovery
+195,amazing disclosure
+196,amazing breakthrough
+197,amazing break
+198,amazing bargain
+199,amazement
+200,amazed
+201,a winner
+202,a ten
+203,a revelation
+204,a reveal
+205,a marvel 
+206,a find
+207,a discovery
+208,a disclosure
+209,a breakthrough
+210,a break
+211,a bargain
+212,a 10
+213,5stars
+214,5star
+215,5-stars
+216,5-star
+217,5 stars
+218,5 star
+219,4stars
+220,4star
+221,4-stars
+222,4-star
+223,4 stars
+224,4 star
+225,2thumbs up
+226,2thumb up
+227,2-thumbs up
+228,2-thumb up
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
 ,
 ,
 ,

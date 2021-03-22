@@ -1,206 +1,414 @@
-1,went black
-2,wasnt always easy
-3,wasn’t always easy
-4,wasn t always easy
-5,very strange
-6,very odd
-7,very cheap
-8,unfortunately
-9,two stars
-10,two star
-11,the less i like it
-12,the less i like 
-13,still waiting
-14,steer clear of 
-15,stay clear of 
-16,sounded ok
-17,sounded good
-18,shouldnt make
-19,shouldnt
-20,shouldn’t make
-21,shouldn’t
-22,shouldn t make
-23,shouldn t
-24,return it
-25,regret
-26,rather bland
-27,pretty piece of junk
-28,poor sound
-29,poor fit
-30,one star
-31,odd
-32,not working
-33,not very happy
-34,not very comfortable at all
-35,not very comfortable
-36,not such a good bargain
-37,not such a good
-38,not so good
-39,not purchase
-40,not nearly so good as
-41,not nearly as good as
-42,not happy
-43,not great
-44,not good
-45,not comfortable at all
-46,not comfortable
-47,not buyit
-48,not buy it 
-49,not at all happy
-50,not at all comfortable
-51,not as good
-52,not answer
-53,not a great bargain
-54,not a great
-55,not a good bargain
-56,not a good
-57,no longer working
-58,no great bargain
-59,no great
-60,no good bargain
-61,no good
-62,never worked
-63,neither is
-64,neither are
-65,my mistake
-66,messes you up
-67,messes us up
-68,messes up
-69,messes them up 
-70,messes me up
-71,low quality
-72,looks amp
-73,look amp
-74,locks up
-75,lock up
-76,lightweight cheap plastic
-77,just as cheap
-78,its not that 
-79,its cheap
-80,it’s not that
-81,it’s cheap
-82,it s not that
-83,it s cheap
-84,it is cheap
-85,isnt the best
-86,isnt it
-87,isn’t the best
-88,isn’t it
-89,isn t the best
-90,isn t it 
-91,is not the best
-92,is not it
-93,if i ever receive 
-94,had to
-95,frustrated
-96,feels amp
-97,feel amp
-98,embarrass
-99,drops calls
-100,drops call
-101,dropped calls
-102,dropped call
-103,drop calls
-104,drop call
-105,dont work
-106,dont waste
-107,dont trust
-108,dont make the same mistake
-109,dont like
-110,dont expect any helpful support
-111,dont expect any helpful
-112,dont expect any
-113,dont expect
-114,dont buy
-115,don’t work
-116,don’t waste
-117,don’t trust
-118,don’t make the same mistake
-119,don’t like
-120,don’t expect any helpful support
-121,don’t expect any helpful
-122,don’t expect any
-123,don’t expect
-124,don’t buy
-125,don t work
-126,don t waste
-127,don t trust
-128,don t make the same mistake
-129,don t like
-130,don t expect any helpful support
-131,don t expect any helpful
-132,don t expect any
-133,don t expect
-134,don t buy
-135,doesnt work
-136,doesnt like
-137,doesnt add
-138,doesn’t work
-139,doesn’t like
-140,doesn’t add
-141,doesn t work
-142,doesn t like
-143,doesn t add
-144,does not work
-145,do not work
-146,do not like
-147,do not expect any helpful support
-148,do not expect any helpful
-149,do not expect any
-150,displeased
-151,displeased
-152,disappointing performance
-153,disappointing device
-154,disappointing accessory
-155,didnt work
-156,didnt like
-157,didnt add
-158,didn’t work
-159,didn’t like
-160,didn’t add
-161,didn t work
-162,didn t perform
-163,didn t like
-164,didn t add
-165,did not work
-166,couldnt understand
-167,couldn’t understand
-168,couldn t understand
-169,complaining
-170,complain
-171,childlike
-172,child-like
-173,child like
-174,cheap plastic
-175,cant understand
-176,cant get
-177,can’t understand
-178,can’t get
-179,can t understand
-180,can t get
-181,breaks really easy
-182,breaks really easily
-183,break really easy
-184,break really easily
-185,bland
-186,be very careful
-187,be extremely careful
-188,be careful
-189,bad sound
-190,bad quality
-191,bad fit
-192,assumed
-193,arent the best
-194,aren’t the best
-195,aren t the best
-196,are not the best
-197,appears amp
-198,appear amp
-199,2stars
-200,2star
-201,2-star
-202,2 stars
-203,2 star
-204,1star
-205,1-star
-206,1 star
+1,wouldnt recommend buying
+2,wouldnt recommend
+3,wouldn’t recommend buying
+4,wouldn’t recommend
+5,wouldn t recommend buying
+6,wouldn t recommend
+7,would not recommend buying
+8,would not recommend
+9,worse
+10,wasnt nice
+11,wasnt great
+12,wasnt good
+13,wasnt fine
+14,wasnt crisp
+15,wasnt comfortable
+16,wasn’t nice
+17,wasn’t great
+18,wasn’t good
+19,wasn’t fine
+20,wasn’t crisp
+21,wasn’t comfortable
+22,wasn t nice
+23,wasn t great
+24,wasn t good
+25,wasn t fine
+26,wasn t crisp
+27,wasn t comfortable
+28,was broken
+29,very strange
+30,very odd
+31,very cheap plastic
+32,very cheap
+33,unusable
+34,unreliable
+35,unintelligible 
+36,unfortunately
+37,unacceptable
+38,two stars
+39,two star
+40,too many issues
+41,to slow to a crawl
+42,to slow
+43,to a crawl 
+44,the worst
+45,still waiting
+46,sounds very cheap
+47,sounded ok
+48,sounded good
+49,sound very cheap
+50,shouldnt make
+51,shouldnt
+52,shouldn’t make
+53,shouldn’t
+54,shouldn t make
+55,shouldn t
+56,return it
+57,one star
+58,odd
+59,not work
+60,not very nice
+61,not very happy
+62,not very great
+63,not very good
+64,not very fine
+65,not very comfortable at all
+66,not very comfortable
+67,not that nice
+68,not that great
+69,not that fine
+70,not that comfortable
+71,not such a good bargain
+72,not such a good
+73,not so great
+74,not so good
+75,not recommend
+76,not purchase
+77,not one nice
+78,not one great
+79,not one good
+80,not one fine
+81,not one comfortable
+82,not nice
+83,not nearly so great
+84,not nearly so good
+85,not nearly so
+86,not nearly as great
+87,not nearly as good 
+88,not nearly as 
+89,not impressed
+90,not happy
+91,not great at all
+92,not great
+93,not good at all
+94,not good
+95,not glad
+96,not fine
+97,not comfortable at all
+98,not comfortable
+99,not awesome
+100,not at all nice
+101,not at all happy
+102,not at all great
+103,not at all good
+104,not at all fine
+105,not at all comfortable
+106,not as good
+107,not a great bargain
+108,not a great
+109,not a good bargain
+110,not a good
+111,not a bargain
+112,none of it works
+113,no great bargain
+114,no great
+115,no good bargain
+116,no good
+117,no bargain at all
+118,no bargain
+119,never worked very well
+120,never worked
+121,neither is
+122,neither are
+123,my mistake
+124,my error
+125,made it impossible
+126,low quality
+127,locks up
+128,lock up
+129,likes to slow
+130,like to slow
+131,like to return the
+132,like to return that
+133,like to return it
+134,like a loud buzzing
+135,just beware
+136,its not that nice
+137,its not that great
+138,its not that good
+139,its not that comfortable
+140,its not that 
+141,its cheap
+142,it’s not that nice
+143,it’s not that great
+144,it’s not that good
+145,it’s not that comfortable
+146,it’s not that
+147,it’s cheap
+148,it s not that
+149,it s cheap
+150,it is cheap
+151,it collapses
+152,it collapsed
+153,it broke
+154,it breaks
+155,isnt working
+156,isnt the best
+157,isn’t working
+158,isn’t the best
+159,isn t working
+160,isn t the best
+161,is not working
+162,is not the best
+163,is broken
+164,impossible to
+165,impossible
+166,if i ever receive 
+167,id expect
+168,i’d expect
+169,i d expect
+170,heard nothing
+171,hear nothing
+172,had to
+173,forget about this
+174,forget about that
+175,forget about it
+176,embarrassing
+177,dont work
+178,dont like
+179,dont feel comfortable
+180,dont buy it
+181,dont buy
+182,don’t work
+183,don’t like
+184,don’t feel comfortable
+185,don’t buy it
+186,don’t buy
+187,don’t buy
+188,don t work
+189,don t like
+190,don t feel comfortable
+191,don t buy it
+192,don t buy
+193,doesnt work
+194,doesnt like
+195,doesn’t work at all
+196,doesn’t work
+197,doesn’t like
+198,doesn t work
+199,doesn t work
+200,doesn t like
+201,does not work
+202,do not work
+203,do not like
+204,disappointment
+205,disappointing performance
+206,disappointing device
+207,disappointing accessory
+208,disappointing
+209,didnt work
+210,didnt like
+211,didn’t work
+212,didn’t like
+213,didn t work
+214,didn t perform
+215,didn t like
+216,did not work
+217,couldnt understand
+218,couldn’t understand
+219,couldn't understand a word 
+220,couldn't understand
+221,couldn t understand
+222,completely unusable
+223,complaining
+224,complain
+225,childlike
+226,child-like
+227,child like
+228,cheap plastic
+229,cant understand
+230,cant get
+231,can’t understand
+232,can t understand
+233,beware
+234,bad quality
+235,assumed it was the best
+236,assumed
+237,arent the best
+238,aren’t the best
+239,aren t the best
+240,are not the best
+241,am not comfortable
+242,aint comfortable
+243,ain’t comfortable
+244,2stars
+245,2star
+246,2-stars
+247,2-star
+248,2 stars
+249,2 star
+250,1star
+251,1-star
+252,1 star
+253, ain t comfortable
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+66,
+70,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+77,
+86,
+88,
+90,
+92,
+95,
+97,
+104,
+107,
+108,
+116,
+117,
+118,
+120,
+121,
+133,
+137,
+140,
+143,
+147,
+148,
+149,
+150,
+157,
+160,
+164,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+178,
+180,
+181,
+182,
+183,
+184,
+185,
+186,
+187,
+188,
+,
+,
+,
+2,
+3,
+4,
+11,
+12,
+14,
+15,
+29,
+,
+,
+,
+,
+,
+,
+32,
+40,
+41,
+47,
+48,
+52,
