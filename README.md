@@ -15,6 +15,6 @@
 * Wishing to run code? Please see *Foreword* in *SA_Amazon_Code_Revisited.Rmd*  or in *SA_Amazon_Insights_Results_Revisited.html* .
 
 * Wishing to visualize insights and results? I can suggest
-*   using https://raw.githack.com/,
-*   knitting SA_Amazon_Code_Revisited.Rmd in RStudio to produce SA_Amazon_Insights_Results_Revisited.html,
-*   or asking me a copy of SA_Amazon_Insights_Results_Revisited.html per mail. 
+    * using https://raw.githack.com/ ,
+    * knitting SA_Amazon_Code_Revisited.Rmd in RStudio to produce SA_Amazon_Insights_Results_Revisited.html,
+    * or asking me a copy of SA_Amazon_Insights_Results_Revisited.html per mail. 
