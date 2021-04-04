@@ -1,2 +1,2 @@
-# Sentiment-Analysis--Amazon-Review_Revisiteds
-It is Sentiment-Analysis--Amazon-Reviews revisited with interactive figures and tables, enabling finer analysis
+# Prediction in Sentiment Analysis: Amazon Reviews Polarity
+* Focus on **Natural Language Processing** and **Text Mining**
