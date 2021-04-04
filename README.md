@@ -14,7 +14,7 @@
 
 * Wishing to run code? Please see *Foreword* in *SA_Amazon_Code_Revisited.Rmd*.
 
-* Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? I can suggest
-    * using https://raw.githack.com/ ,
-    * knitting *SA_Amazon_Code_Revisited.Rmd* in RStudio to produce *SA_Amazon_Insights_Results_Revisited.html*,
-    * or asking me a copy of *SA_Amazon_Insights_Results_Revisited.html* per mail. 
+* Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? You could
+    * use https://raw.githack.com/ according to https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source ,
+    * or knit *SA_Amazon_Code_Revisited.Rmd* in RStudio to produce *SA_Amazon_Insights_Results_Revisited.html*,
+    * or ask me a copy of *SA_Amazon_Insights_Results_Revisited.html* per mail. 
