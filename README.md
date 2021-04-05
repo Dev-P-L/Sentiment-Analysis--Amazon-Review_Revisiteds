@@ -1,6 +1,6 @@
 # Prediction in Sentiment Analysis: Amazon Reviews Polarity
 
-* **91 % prediction accuracy** on the validation set
+##* **91 % prediction accuracy** on the validation set
 
 * Focus on **Natural Language Processing** and **Text Mining**
 
