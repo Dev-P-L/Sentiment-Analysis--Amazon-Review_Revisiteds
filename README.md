@@ -17,4 +17,4 @@
 * Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? You could
     * use https://raw.githack.com/ according to https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source ,
     * or knit *SA_Amazon_Code_Revisited.Rmd* in RStudio to produce *SA_Amazon_Insights_Results_Revisited.html*,
-    * or ask me a copy of *SA_Amazon_Insights_Results_Revisited.html* per mail. 
+    * or ask me a copy of *SA_Amazon_Insights_Results_Revisited.html* by email. 
