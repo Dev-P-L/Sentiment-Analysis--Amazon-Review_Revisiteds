@@ -14,6 +14,9 @@
 
 * Wishing to run code? Please see *Foreword* in *SA_Amazon_Code_Revisited.Rmd*.
 
+
+https://rawcdn.githack.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/3ed9c0b8d03d2f927e3a16173c033274accfc46c/SA_Amazon_Insights_Results_Revisited.html
+
 * Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? You could
     * use https://raw.githack.com/ according to https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source ,
     * or knit *SA_Amazon_Code_Revisited.Rmd* in RStudio to produce *SA_Amazon_Insights_Results_Revisited.html* ,
