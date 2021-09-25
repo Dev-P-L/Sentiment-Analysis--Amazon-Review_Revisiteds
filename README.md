@@ -14,10 +14,11 @@
 
 * Wishing to run code? Please see *Foreword* in *SA_Amazon_Code_Revisited.Rmd*.
 
+* Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? 
 
-https://rawcdn.githack.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/3ed9c0b8d03d2f927e3a16173c033274accfc46c/SA_Amazon_Insights_Results_Revisited.html
+  * You could open it in GitHub Desktop.
 
-* Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? You could
-    * use https://raw.githack.com/ according to https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source ,
-    * or knit *SA_Amazon_Code_Revisited.Rmd* in RStudio to produce *SA_Amazon_Insights_Results_Revisited.html* ,
-    * or ask me a copy of *SA_Amazon_Insights_Results_Revisited.html* by email. 
+  * Alternatively, you could use the URL 
+https://rawcdn.githack.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/3ed9c0b8d03d2f927e3a16173c033274accfc46c/SA_Amazon_Insights_Results_Revisited.html which, when activated, delivers *SA_Amazon_Insights_Results_Revisited.html* to the browser with the correct Content-Type headers. The URL has been obtained by introducing the GitHub URL of *SA_Amazon_Insights_Results_Revisited.html* into https://raw.githack.com/ , as suggested in https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source .
+
+  * Alternatively again, you could knit *SA_Amazon_Code_Revisited.Rmd* or ask me by email for a copy of *SA_Amazon_Insights_Results_Revisited.html*
