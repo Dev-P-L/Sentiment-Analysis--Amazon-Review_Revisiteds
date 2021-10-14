@@ -16,9 +16,8 @@
 
 * Wishing to visualize *SA_Amazon_Insights_Results_Revisited.html*? 
 
-  * You could open it in GitHub Desktop.
-
-  * Alternatively, you could use the URL 
-https://rawcdn.githack.com/Dev-P-L/Sentiment-Analysis__Amazon-Reviews__Revisited/3ed9c0b8d03d2f927e3a16173c033274accfc46c/SA_Amazon_Insights_Results_Revisited.html which, when activated, delivers *SA_Amazon_Insights_Results_Revisited.html* to the browser with the correct Content-Type headers. The URL has been obtained by introducing the GitHub URL of *SA_Amazon_Insights_Results_Revisited.html* into https://raw.githack.com/ , as suggested in https://stackoverflow.com/questions/6551446/can-i-run-html-files-directly-from-github-instead-of-just-viewing-their-source .
+  * You could activate the hyperlink https://dev-p-l.github.io/Sentiment-Analysis__Amazon-Reviews__Revisited/SA_Amazon_Insights_Results_Revisited.html .
+  
+  * Alternatively, you could open it in GitHub Desktop.
 
   * Alternatively again, you could knit *SA_Amazon_Code_Revisited.Rmd* or ask me by email for a copy of *SA_Amazon_Insights_Results_Revisited.html*
