@@ -1,3 +1,11 @@
+# Access to HTML Document
+
+https://dev-p-l.github.io/Sentiment-Analysis__Amazon-Reviews__Revisited/SA_Amazon_Insights_Results_Revisited.html
+
+<br>
+<br>
+
+# Swift Presentation of Project with Source Code about 
 # Prediction in Sentiment Analysis: Amazon Reviews Polarity
 
 * **91 % prediction accuracy** on the validation set
