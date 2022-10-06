@@ -5,8 +5,8 @@ https://dev-p-l.github.io/Sentiment-Analysis__Amazon-Reviews__Revisited/SA_Amazo
 <br>
 <br>
 
-# Swift Presentation of Project on 
-# Prediction in Sentiment Analysis: Amazon Reviews Polarity
+# Swift Presentation of Sentiment Analysis Project on 
+# Prediction of Amazon Reviews Polarity
 
 * **91 % prediction accuracy** on the validation set
 
